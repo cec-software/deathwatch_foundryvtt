@@ -23,6 +23,16 @@ export default class DeathwatchPsychicPower extends DeathwatchItemBase {
     schema.penetrationFormula = new fields.StringField({ initial: "", blank: true });
     schema.damageType = new fields.StringField({ initial: "", blank: true });
     schema.attachedQualities = new fields.ArrayField(new fields.ObjectField(), { initial: [] });
+    // Template configuration for area-effect powers
+    schema.template = new fields.SchemaField({
+      type: new fields.StringField({
+        initial: "",
+        blank: true,
+        choices: ["cone", "circle", "ray", ""]
+      }),
+      distance: new fields.StringField({ initial: "", blank: true }),
+      angle: new fields.StringField({ initial: "", blank: true })
+    }, { initial: null, nullable: true });
     return schema;
   }
 }

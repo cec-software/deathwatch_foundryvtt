@@ -38,6 +38,16 @@ export default class DeathwatchWeapon extends DeathwatchItemBase {
       label: "Animation Key",
       hint: "Override animation type (e.g., 'bolt', 'las', 'plasma', 'melta', 'flame'). Leave blank for automatic detection."
     });
+    // Template configuration for area-effect attacks
+    schema.template = new fields.SchemaField({
+      type: new fields.StringField({
+        initial: "",
+        blank: true,
+        choices: ["cone", "circle", "ray", ""]
+      }),
+      distance: new fields.StringField({ initial: "", blank: true }),
+      angle: new fields.StringField({ initial: "", blank: true })
+    }, { initial: null, nullable: true });
     return schema;
   }
 

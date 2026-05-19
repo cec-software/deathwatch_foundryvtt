@@ -20,6 +20,7 @@
     "renown": "",
     "attachedQualities": [{ "id": "flame" }],
     "description": "<p>While the size and weight of heavy flamers makes them an unpopular choice among many Imperial forces, these are hardly deterrents to a Space Marine in power armour. Terminator squads and many vehicles make frequent use of the large saturation area of heavy flamers. The twin nozzles produce huge gouts of fire, enough to purge the densest terrain of xenos.</p>",
-    "modifiers": []
+    "modifiers": [],
+    "template": { "type": "cone", "distance": "30", "angle": "30" }
   }
 }

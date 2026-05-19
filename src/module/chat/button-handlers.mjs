@@ -8,6 +8,7 @@ import { Validation } from "../helpers/validation.mjs";
 import { Sanitizer } from "../helpers/sanitizer.mjs";
 import { ROLL_CONSTANTS } from "../helpers/constants/index.mjs";
 import { MODIFIER_TYPES } from "../helpers/constants/modifier-constants.mjs";
+import { templateAttack } from "../macros/template-attack.mjs";
 
 /**
  * Handles chat message button event listeners.
@@ -28,6 +29,7 @@ export class ChatButtonHandlers {
       this._registerCohesionDamageAcceptButton(html);
       this._registerExtinguishButton(html);
       this._registerPsychicOpposeButton(html);
+      this._registerTemplateAttackButton(html);
     });
   }
 
@@ -505,5 +507,30 @@ export class ChatButtonHandlers {
         ]
       });
     }, 'Psychic Oppose Test')));
+  }
+
+  /**
+   * Register Template Attack button handler
+   */
+  static _registerTemplateAttackButton(html) {
+    html.querySelectorAll('.template-attack-btn').forEach(btn => btn.addEventListener('click', ErrorHandler.wrap(async (ev) => {
+      const button = ev.currentTarget;
+      const itemId = button.dataset.itemId;
+      const actorId = button.dataset.actorId;
+
+      const actor = game.actors.get(actorId);
+      if (!actor) {
+        ui.notifications.warn('Actor not found');
+        return;
+      }
+
+      const item = actor.items.get(itemId);
+      if (!item) {
+        ui.notifications.warn('Item not found');
+        return;
+      }
+
+      await templateAttack(item, actor);
+    }, 'Template Attack')));
   }
 }

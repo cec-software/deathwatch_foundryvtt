@@ -309,25 +309,14 @@ export class DeathwatchItemSheetV2 extends HandlebarsApplicationMixin(
   static async _onWeaponAttack(event, target) {
     const actor = this.item.actor;
     if (!actor) return ui.notifications.warn("This weapon must be owned by an actor to roll attacks.");
-    const bs = actor.system.characteristics.bs.value;
-    const roll = await new Roll("1d100").evaluate();
-    const isHit = roll.total <= bs;
-    const flavor = `<h2>${this.item.name} - Attack Roll</h2><p>Target: ${bs}</p>`;
-    roll.toMessage({
-      speaker: ChatMessage.getSpeaker({ actor }),
-      flavor: flavor + `<p><strong>${isHit ? 'HIT!' : 'MISS!'}</strong></p>`
-    });
+    await game.deathwatch.CombatRouter.executeAttack(actor, this.item);
   }
 
   /* istanbul ignore next */
   static async _onWeaponDamage(event, target) {
     const actor = this.item.actor;
     if (!actor) return ui.notifications.warn("This weapon must be owned by an actor to roll damage.");
-    const dmg = this.item.system.dmg;
-    if (!dmg) return ui.notifications.warn("This weapon has no damage value.");
-    const roll = await new Roll(dmg).evaluate();
-    const flavor = `<h2>${this.item.name} - Damage Roll</h2><p>Penetration: ${this.item.system.penetration}</p>`;
-    roll.toMessage({ speaker: ChatMessage.getSpeaker({ actor }), flavor });
+    await game.deathwatch.CombatRouter.executeDamage(actor, this.item);
   }
 
   static async _onHistoryRemove(event, target) {

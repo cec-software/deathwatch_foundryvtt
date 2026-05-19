@@ -1,6 +1,6 @@
 import { ErrorHandler } from '../../../helpers/error-handler.mjs';
 import { Validation } from '../../../helpers/validation.mjs';
-import { CombatHelper } from '../../../helpers/combat/combat.mjs';
+import { CombatRouter } from '../../../helpers/combat/combat-router.mjs';
 
 /**
  * Handles weapon-specific actions (attack, damage roll, clear jam).
@@ -38,21 +38,21 @@ export class WeaponHandlers {
     html.find('.weapon-attack-btn').click(ErrorHandler.wrap(async (ev) => {
       const itemId = $(ev.currentTarget).data('itemId');
       const weapon = Validation.requireDocument(actor.items.get(itemId), 'Weapon', 'Attack');
-      await CombatHelper.weaponAttackDialog(actor, weapon);
+      await CombatRouter.executeAttack(actor, weapon);
     }, 'Weapon Attack'));
 
     // Weapon damage roll
     html.find('.weapon-damage-btn').click(ErrorHandler.wrap(async (ev) => {
       const itemId = $(ev.currentTarget).data('itemId');
       const weapon = Validation.requireDocument(actor.items.get(itemId), 'Weapon', 'Roll Damage');
-      await CombatHelper.weaponDamageRoll(actor, weapon);
+      await CombatRouter.executeDamage(actor, weapon);
     }, 'Weapon Damage'));
 
     // Clear weapon jam
     html.find('.weapon-unjam-btn').click(ErrorHandler.wrap(async (ev) => {
       const itemId = $(ev.currentTarget).data('itemId');
       const weapon = Validation.requireDocument(actor.items.get(itemId), 'Weapon', 'Clear Jam');
-      await CombatHelper.clearJam(actor, weapon);
+      await game.deathwatch.CombatHelper.clearJam(actor, weapon);
     }, 'Clear Jam'));
   }
 }

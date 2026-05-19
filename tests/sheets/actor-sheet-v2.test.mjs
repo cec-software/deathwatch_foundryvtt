@@ -16,7 +16,16 @@ describe('DeathwatchActorSheetV2', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    global.game.deathwatch = { config: { CharacteristicWords: {}, Skills: {} } };
+    global.game.deathwatch = {
+      config: { CharacteristicWords: {}, Skills: {} },
+      CombatRouter: {
+        executeAttack: jest.fn(),
+        executeDamage: jest.fn(),
+      },
+      CombatHelper: {
+        clearJam: jest.fn(),
+      },
+    };
     global.CONFIG = {
       statusEffects: [
         { id: 'stunned', name: 'Stunned', img: 'icons/svg/daze.svg' }

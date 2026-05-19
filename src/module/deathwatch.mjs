@@ -18,11 +18,14 @@ import { initializeHandlebars } from "./helpers/ui/handlebars.js";
 import { SkillLoader } from "./helpers/character/skill-loader.mjs";
 import { CohesionHelper } from "./helpers/cohesion.mjs";
 import { CohesionPanel } from "./ui/cohesion-panel.mjs";
+import { CombatHelper } from "./helpers/combat/combat.mjs";
+import { CombatRouter } from "./helpers/combat/combat-router.mjs";
 import { Logger } from "./helpers/logger.mjs";
 // Import macros.
 import { applyOnFireEffects } from "./macros/on-fire-effects.mjs";
 import { flameAttack } from "./macros/flame-attack.mjs";
 import { rollItemMacro } from "./macros/hotbar.mjs";
+import { templateAttack } from "./macros/template-attack.mjs";
 // Import API modules.
 import { SkillRoller } from "./api/skill-roller.mjs";
 import { CharacteristicRoller } from "./api/characteristic-roller.mjs";
@@ -47,8 +50,11 @@ Hooks.once('init', async function () {
     rollItemMacro,        // From macros/hotbar.mjs
     flameAttack,          // From macros/flame-attack.mjs
     applyOnFireEffects,   // From macros/on-fire-effects.mjs
+    templateAttack,       // From macros/template-attack.mjs
     CohesionHelper,
     CohesionPanel,
+    CombatHelper,
+    CombatRouter,
     Logger,
     // Public API for macros
     rollSkill: SkillRoller.rollSkill.bind(SkillRoller),

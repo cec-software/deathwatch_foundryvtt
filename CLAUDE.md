@@ -23,7 +23,7 @@ This project uses a three-tier documentation system:
 
 ## System Overview
 
-This is a **Foundry VTT v13 game system** for Warhammer 40,000: Deathwatch RPG. It implements:
+This is a **Foundry VTT v13-v14 game system** for Warhammer 40,000: Deathwatch RPG. It implements:
 
 - 4 actor types (Character, NPC, Enemy, Horde) with full combat mechanics
 - 17 item types covering weapons, armor, talents, psychic powers, etc.
@@ -221,7 +221,7 @@ When creating PRs, target the `main` branch.
 
 ## System Notes
 
-- **Foundry version**: Locked to Foundry v13
+- **Foundry version**: Supports v13 and v14 (tested on v13.331, v14.x compatible)
 - **Grid**: 3 meters per square (metric)
 - **Token bars**: Primary = Wounds, Secondary = Fatigue
 - **Initiative formula**: `1d10 + @agBonus + @initiativeBonus`

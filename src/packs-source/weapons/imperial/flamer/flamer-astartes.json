@@ -20,6 +20,7 @@
     "renown": "",
     "attachedQualities": [{ "id": "flame" }],
     "description": "<p>Flamers are a common weapon in the Deathwatch arsenal, and are particularly effective against infantry. They are capable of laying down a stream of incendiary fuel that can be devastating in close combat. The Astartes variant is more powerful and accurate than standard flamer variants.</p>",
-    "modifiers": []
+    "modifiers": [],
+    "template": { "type": "cone", "distance": "20", "angle": "30" }
   }
 }
