@@ -34,7 +34,6 @@ export class CombatRouter {
       case 'PsychicCombatHelper': return PsychicCombatHelper;
       case 'WeaponQualityHelper': return WeaponQualityHelper;
       case 'flameAttack': return flameAttack;
-      case 'templateAttack': return game.deathwatch?.templateAttack;
       default: throw new Error(`Unknown helper: ${name}`);
     }
   }
@@ -72,9 +71,8 @@ export class CombatRouter {
   /**
    * Execute damage roll or effect resolution.
    * Routes based on:
-   * 1. Template configuration (highest priority)
-   * 2. Weapon qualities (flame, etc.)
-   * 3. Item type (weapon vs psychic power)
+   * 1. Weapon qualities (flame, etc.)
+   * 2. Item type (weapon vs psychic power)
    *
    * @param {Actor} actor - Attacking actor
    * @param {Item} item - Item being used (weapon or psychic power)
@@ -86,21 +84,11 @@ export class CombatRouter {
    * await CombatRouter.executeDamage(actor, boltgun);
    *
    * @example
-   * // Template weapon (redirects to template attack system)
-   * await CombatRouter.executeDamage(actor, flamer);
-   *
-   * @example
    * // Psychic power
    * await CombatRouter.executeDamage(actor, smite);
    */
   static async executeDamage(actor, item) {
-    // Priority 1: Template configuration (applies to both weapons and psychic powers)
-    if (item.system.template?.type) {
-      const templateAttack = this._getHelper('templateAttack');
-      return await templateAttack(item, actor);
-    }
-
-    // Priority 2: Weapon-specific routing
+    // Priority 1: Weapon-specific routing
     if (item.type === 'weapon') {
       // Check for flame quality
       const WeaponQualityHelper = this._getHelper('WeaponQualityHelper');
@@ -114,7 +102,7 @@ export class CombatRouter {
       return await this._getHelper('CombatHelper').weaponDamageRoll(actor, item);
     }
 
-    // Priority 3: Psychic power routing
+    // Priority 2: Psychic power routing
     if (item.type === 'psychic-power') {
       return await this._getHelper('PsychicCombatHelper').focusPowerDialog(actor, item);
     }

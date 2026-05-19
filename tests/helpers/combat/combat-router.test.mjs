@@ -8,7 +8,6 @@ describe('CombatRouter', () => {
   let mockCombatHelper;
   let mockPsychicCombatHelper;
   let mockFlameAttack;
-  let mockTemplateAttack;
   let mockWeaponQualityHelper;
 
   beforeEach(() => {
@@ -25,8 +24,7 @@ describe('CombatRouter', () => {
       name: 'Test Weapon',
       type: 'weapon',
       system: {
-        dmg: '1d10+5',
-        template: null
+        dmg: '1d10+5'
       }
     };
 
@@ -36,8 +34,7 @@ describe('CombatRouter', () => {
       name: 'Test Power',
       type: 'psychic-power',
       system: {
-        damageFormula: '1d10+10',
-        template: null
+        damageFormula: '1d10+10'
       }
     };
 
@@ -52,8 +49,6 @@ describe('CombatRouter', () => {
     };
 
     mockFlameAttack = jest.fn();
-    mockTemplateAttack = jest.fn();
-
     mockWeaponQualityHelper = {
       hasQuality: jest.fn().mockResolvedValue(false)
     };
@@ -63,7 +58,6 @@ describe('CombatRouter', () => {
       CombatHelper: mockCombatHelper,
       PsychicCombatHelper: mockPsychicCombatHelper,
       flameAttack: mockFlameAttack,
-      templateAttack: mockTemplateAttack,
       WeaponQualityHelper: mockWeaponQualityHelper
     });
   });
@@ -95,42 +89,13 @@ describe('CombatRouter', () => {
   });
 
   describe('executeDamage', () => {
-    it('should route to templateAttack when weapon has template configuration', async () => {
-      mockWeapon.system.template = { type: 'cone', distance: '20', angle: '30' };
-
-      await CombatRouter.executeDamage(mockActor, mockWeapon);
-
-      expect(mockTemplateAttack).toHaveBeenCalledWith(mockWeapon, mockActor);
-      expect(mockCombatHelper.weaponDamageRoll).not.toHaveBeenCalled();
-      expect(mockFlameAttack).not.toHaveBeenCalled();
-    });
-
-    it('should route to templateAttack when psychic power has template configuration', async () => {
-      mockPsychicPower.system.template = { type: 'cone', distance: '30', angle: '30' };
-
-      await CombatRouter.executeDamage(mockActor, mockPsychicPower);
-
-      expect(mockTemplateAttack).toHaveBeenCalledWith(mockPsychicPower, mockActor);
-      expect(mockPsychicCombatHelper.focusPowerDialog).not.toHaveBeenCalled();
-    });
-
-    it('should route to flameAttack when weapon has flame quality (no template)', async () => {
+    it('should route to flameAttack when weapon has flame quality', async () => {
       mockWeaponQualityHelper.hasQuality.mockResolvedValueOnce(true);
 
       await CombatRouter.executeDamage(mockActor, mockWeapon);
 
       expect(mockFlameAttack).toHaveBeenCalledWith(mockWeapon);
       expect(mockCombatHelper.weaponDamageRoll).not.toHaveBeenCalled();
-    });
-
-    it('should prefer template over flame quality when both present', async () => {
-      mockWeapon.system.template = { type: 'cone', distance: '20', angle: '30' };
-      mockWeaponQualityHelper.hasQuality.mockResolvedValueOnce(true);
-
-      await CombatRouter.executeDamage(mockActor, mockWeapon);
-
-      expect(mockTemplateAttack).toHaveBeenCalledWith(mockWeapon, mockActor);
-      expect(mockFlameAttack).not.toHaveBeenCalled();
     });
 
     it('should route standard weapon damage to CombatHelper.weaponDamageRoll', async () => {
@@ -155,14 +120,6 @@ describe('CombatRouter', () => {
 
       await expect(CombatRouter.executeDamage(mockActor, mockTalent))
         .rejects.toThrow('Item type "talent" does not support damage rolls');
-    });
-
-    it('should not check flame quality if template is present (optimization)', async () => {
-      mockWeapon.system.template = { type: 'cone', distance: '20', angle: '30' };
-
-      await CombatRouter.executeDamage(mockActor, mockWeapon);
-
-      expect(mockWeaponQualityHelper.hasQuality).not.toHaveBeenCalled();
     });
   });
 });

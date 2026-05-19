@@ -3,7 +3,6 @@ import { CohesionPanel } from "../ui/cohesion-panel.mjs";
 import { applyOnFireEffects } from "../macros/on-fire-effects.mjs";
 import { Sanitizer } from "../helpers/sanitizer.mjs";
 import { AnimationHook } from "../hooks/animation-hook.mjs";
-import { registerTemplateCleanupHook } from "./template-cleanup.mjs";
 
 /**
  * Registers all runtime hooks for the Deathwatch system.
@@ -18,7 +17,6 @@ export class InitHooks {
     this._registerActiveEffectHooks();
     this._registerCombatHooks();
     this._registerSceneControlHooks();
-    registerTemplateCleanupHook();
     AnimationHook.register();
   }
 

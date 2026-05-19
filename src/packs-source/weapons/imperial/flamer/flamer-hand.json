@@ -20,7 +20,6 @@
     "renown": "",
     "attachedQualities": [{ "id": "flame" }],
     "description": "<p>This hand-held flamer is still capable of unleashing large blasts of flame, but is good for only a few shots before the fuel canister must be switched out.</p>",
-    "modifiers": [],
-    "template": { "type": "cone", "distance": "10", "angle": "30" }
+    "modifiers": []
   }
 }

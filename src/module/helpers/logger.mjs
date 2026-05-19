@@ -54,6 +54,9 @@ export class Logger {
     'SYSTEM.MIGRATION': { group: 'system', key: 'data-migration', label: 'Data Migration' },
     'SYSTEM.ERROR': { group: 'system', key: 'error-handling', label: 'Error Handling' },
 
+    // Canvas
+    'CANVAS.REGION': { group: 'canvas', key: 'regions', label: 'Regions' },
+
     // Hooks
     'HOOKS.ANIMATION': { group: 'hooks', key: 'animations', label: 'Animations' },
 

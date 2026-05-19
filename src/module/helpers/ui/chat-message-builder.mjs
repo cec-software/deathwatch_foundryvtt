@@ -14,7 +14,6 @@ export class ChatMessageBuilder {
   static _buildItemCardContent(item, actor) {
     const safeName = Sanitizer.escape(item.name);
     const book = item.system.book ? `<p style="font-size: 0.85em; color: #666; margin-top: 10px;"><em>${Sanitizer.escape(item.system.book)}, p${item.system.page}</em></p>` : '';
-    const templateButton = this._createTemplateAttackButton(item, actor);
 
     switch (item.type) {
       case 'armor-history':
@@ -63,13 +62,13 @@ export class ChatMessageBuilder {
       case 'weapon':
         return {
           title: `<h3>${safeName}</h3>`,
-          content: `${item.system.description || ''}${book}${templateButton}`
+          content: `${item.system.description || ''}${book}`
         };
 
       case 'psychic-power':
         return {
           title: `<h3>${safeName}</h3>`,
-          content: `${item.system.description || ''}${book}${templateButton}`
+          content: `${item.system.description || ''}${book}`
         };
 
       default:
@@ -78,29 +77,6 @@ export class ChatMessageBuilder {
           content: item.system.description || ''
         };
     }
-  }
-
-  /**
-   * Create template attack button if item has template configuration.
-   * @param {Item} item - Item document
-   * @param {Actor} actor - Actor document
-   * @returns {string} HTML button or empty string
-   * @private
-   */
-  static _createTemplateAttackButton(item, actor) {
-    // Only show button for weapons and psychic powers with template config
-    if (!item.system.template || !item.system.template.type) {
-      return '';
-    }
-
-    if (item.type !== 'weapon' && item.type !== 'psychic-power') {
-      return '';
-    }
-
-    const safeItemId = Sanitizer.escape(item.id);
-    const safeActorId = Sanitizer.escape(actor.id);
-
-    return `<div class="card-buttons" style="margin-top: 8px;"><button class="template-attack-btn" data-item-id="${safeItemId}" data-actor-id="${safeActorId}">🎯 Template Attack</button></div>`;
   }
 
   static createRollMessage(roll, actor, flavor) {
