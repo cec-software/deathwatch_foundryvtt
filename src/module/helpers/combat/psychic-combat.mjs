@@ -627,18 +627,79 @@ export class PsychicCombatHelper {
   /* istanbul ignore next */
   static async _rollPsychicDamage(actor, power, effectivePR, targetNumber, dos) {
     const damageFormula = this.substitutePR(power.system.damageFormula, effectivePR);
-    const penetration = power.system.penetrationFormula
-      ? parseInt(this.substitutePR(power.system.penetrationFormula, effectivePR)) || 0
-      : 0;
+
+    // Calculate penetration - evaluate formula after PR substitution
+    let penetration = 0;
+    if (power.system.penetrationFormula) {
+      const penFormula = this.substitutePR(power.system.penetrationFormula, effectivePR);
+      try {
+        // Use Function constructor to safely evaluate arithmetic expressions like "2*4"
+        penetration = Function(`'use strict'; return (${penFormula})`)();
+      } catch (e) {
+        // Fallback to parseInt for simple numbers
+        penetration = parseInt(penFormula) || 0;
+      }
+    }
+
     const damageType = power.system.damageType || "Energy";
 
     const targetToken = game.user.targets?.first();
     const targetActor = targetToken?.actor;
     const tokenInfo = targetToken?.document ? { sceneId: targetToken.document.parent.id, tokenId: targetToken.document.id } : null;
 
-    // Check for weapon qualities
-    const hasTearing = power.system.attachedQualities?.some(q => q.key === 'tearing');
-    const hasTainted = power.system.attachedQualities?.some(q => q.key === 'tainted');
+    // Check for weapon qualities (can be string or object with id property)
+    const hasFlame = power.system.attachedQualities?.some(q => (typeof q === 'string' ? q : q.id) === 'flame');
+    const hasTearing = power.system.attachedQualities?.some(q => (typeof q === 'string' ? q : q.id) === 'tearing');
+    const hasTainted = power.system.attachedQualities?.some(q => (typeof q === 'string' ? q : q.id) === 'tainted');
+
+    // Flame quality: create flamer-style chat message for Flame Attack macro consumption
+    if (hasFlame) {
+      const damageRoll = await FoundryAdapter.evaluateRoll(damageFormula);
+      const damage = damageRoll.total;
+      const range = parseInt(power.system.range?.match(/\d+/)?.[0]) || 30; // Extract first number from range string
+      const timestamp = Date.now();
+      const safePowerName = Sanitizer.escape(power.name);
+
+      // Play flame animation if target is selected (optional)
+      const attackerToken = actor.getActiveTokens?.()?.[0] || game.canvas?.tokens?.controlled?.[0];
+
+      if (attackerToken && targetToken) {
+        const { AnimationHelper } = await import('../ui/animation-helper.mjs');
+        const librariesAvailable = AnimationHelper.areAnimationLibrariesAvailable();
+
+        if (librariesAvailable) {
+          const flameConfig = AnimationHelper.getAnimationConfig('flame');
+          await AnimationHelper.playWeaponAnimation(attackerToken, targetToken, flameConfig, 1);
+        }
+      }
+
+      const content = `
+        <div class="flamer-damage-roll"
+             data-flamer-damage="${damage}"
+             data-flamer-pen="${penetration}"
+             data-flamer-type="${Sanitizer.escape(damageType)}"
+             data-flamer-range="${range}"
+             data-actor-id="${actor.id}"
+             data-weapon-name="${safePowerName}"
+             data-timestamp="${timestamp}">
+          <h3>🔥 Psychic Flame: ${safePowerName}</h3>
+          <p><strong>Damage:</strong> ${damage}</p>
+          <p><strong>Penetration:</strong> ${penetration}</p>
+          <p><strong>Damage Type:</strong> ${Sanitizer.escape(damageType)}</p>
+          <p><strong>Range:</strong> ${range}m</p>
+          <em>Run Flame Attack macro for each target in cone.</em>
+        </div>
+      `;
+
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor }),
+        content,
+        rolls: [damageRoll],
+        rollMode: game.settings.get('core', 'rollMode')
+      });
+
+      return; // Exit early for flame powers
+    }
 
     // Horde hit calculation
     let numHits = 1;

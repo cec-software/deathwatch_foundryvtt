@@ -315,14 +315,11 @@ ${dropdownOptions}        </select>
                     const damageType = el.querySelector('#flameDmgType').value?.trim() || 'Energy';
                     const weaponRange = parseInt(el.querySelector('#flameRange').value) || 20;
 
-                    const targetToken = game.user.targets.first();
-                    if (!targetToken?.actor) {
-                        ui.notifications.warn('Target a token before clicking Burn.');
+                    const targetTokens = canvas.tokens.controlled;
+                    if (!targetTokens || targetTokens.length === 0) {
+                        ui.notifications.warn('Select at least one token before clicking Burn.');
                         return;
                     }
-                    const targetActor = targetToken.actor;
-                    const targetName = targetActor.name;
-                    const isHorde = targetActor.type === 'horde';
 
                     // Get source token (controlled or speaker's token)
                     let sourceToken = canvas.tokens.controlled[0];
@@ -333,11 +330,22 @@ ${dropdownOptions}        </select>
                         }
                     }
 
-                    if (isHorde) {
-                        await handleHordeFlameAttack(targetActor, targetName, weaponRange, damageFormula, penetration, damageType, sourceToken, targetToken);
-                    } else {
-                        await handleIndividualFlameAttack(targetActor, targetName, damageFormula, penetration, damageType, sourceToken, targetToken);
+                    // Process each selected token
+                    for (const targetToken of targetTokens) {
+                        if (!targetToken?.actor) continue;
+
+                        const targetActor = targetToken.actor;
+                        const targetName = targetActor.name;
+                        const isHorde = targetActor.type === 'horde';
+
+                        if (isHorde) {
+                            await handleHordeFlameAttack(targetActor, targetName, weaponRange, damageFormula, penetration, damageType, sourceToken, targetToken);
+                        } else {
+                            await handleIndividualFlameAttack(targetActor, targetName, damageFormula, penetration, damageType, sourceToken, targetToken);
+                        }
                     }
+
+                    ui.notifications.info(`Flame attack processed for ${targetTokens.length} target(s).`);
                 }
             },
             { label: 'Cancel', action: 'cancel' }

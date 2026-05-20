@@ -37,6 +37,7 @@ When starting work on this project, read CLAUDE.md first for quick start, then c
 ## Projects
 
 - [Flamer Workflow Implementation](flamer_workflow_implementation.md) — Single damage roll with multi-target application, animation on attack, ammo tracking
+- [Psychic Flame Powers](psychic_flame_powers.md) — Avenger psychic power uses flamer workflow, penetration calculation bug fix
 - [WebP Conversion](project_webp_conversion.md) — Ongoing icon optimization initiative (10 weapons converted)
 - [TDD Example: XP Calculator](project_tdd_example.md) — Reference implementation of test-driven development workflow
 - [Legacy Weapon Modifier Removal](project_legacy_weapon_modifier_removal.md) — Consolidated duplicate modifier logic into WeaponModifierCollector (~170 lines removed)

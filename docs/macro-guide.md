@@ -145,15 +145,23 @@ See [combat-reactions-guide.md](combat-reactions-guide.md) for scenarios and det
 
 ## Flamer Workflow
 
-Flame weapons (Heavy Flamer, Hand Flamer, etc.) use a special workflow because they fire a **cone** that automatically hits all targets within range.
+Flame weapons (Heavy Flamer, Hand Flamer) and psychic powers with flame quality (Avenger) use a special workflow because they fire a **cone** that automatically hits all targets within range.
 
 ### How It Works
 
+**For Flame Weapons:**
 1. **Attack Button** - Rolls damage once and displays in chat (no attack roll needed)
 2. **Optional:** Target a token to play flame animation
 3. **Ammunition Deducted** - 1 round consumed (if weapon has ammo management)
 4. **Place Template** - Drag template from compendium to show cone area (optional visual aid)
 5. **Flame Attack Macro** - Run for each target in cone, applies damage individually
+
+**For Psychic Flame Powers (Avenger):**
+1. **Focus Power Test** - Roll Willpower test, select power level (Fettered/Unfettered/Push)
+2. **On Success** - Damage rolled and displayed in chat (just like weapons)
+3. **Penetration** - Calculated as 2×Psy Rating (already substituted in chat)
+4. **Animation** - Plays if target selected
+5. **Flame Attack Macro** - Same workflow as weapons for each target
 
 ### Step-by-Step Example
 
@@ -174,18 +182,20 @@ Flame weapons (Heavy Flamer, Hand Flamer, etc.) use a special workflow because t
    - GM determines which tokens are in cone
 
 3. **Apply Damage (Per Target):**
-   - Target first Ork token
-   - Run **🔥 Flame Attack** macro from hotbar
+   - **Select all tokens in cone** (click each to select, blue borders) or select one at a time
+   - Run **🔥 Flame Attack** macro from hotbar once
    - Dropdown shows recent rolls: "Brother Marcus (25, Pen 4, Energy)"
    - Click **Burn** button
-   - Target makes Agility dodge test
-   - If failed: Takes full damage + Catch Fire test
+   - **Macro processes all selected tokens automatically:**
+     - Each selected token makes Agility dodge test
+     - If failed: Takes full damage + Catch Fire test
+     - Confirmation notification shows number of targets processed
 
-4. **Repeat for Each Target:**
-   - Target next Ork token
-   - Run **🔥 Flame Attack** macro again
-   - Same dropdown (uses already-rolled damage)
-   - Each target gets individual dodge/catch fire tests
+4. **Single Target Alternative:**
+   - **Select** one Ork token
+   - Run **🔥 Flame Attack** macro
+   - Same workflow, processes single target
+   - Repeat for each additional target if desired
 
 5. **Results:**
    - Single enemies: Individual damage application with dodge/catch fire tests
@@ -228,11 +238,13 @@ Flame weapons (Heavy Flamer, Hand Flamer, etc.) use a special workflow because t
 - Manual entry available if needed
 - Parses damage, penetration, type, range from chat
 
-**Per-Target Application:**
-- Run macro once for each target in cone
-- Target makes Agility dodge test
+**Multi-Target Application:**
+- Select all targets in cone (shift-click or drag-select)
+- Run macro once—processes all selected tokens
+- Each target makes individual Agility dodge test
 - If dodge fails: Apply damage + Catch Fire test
 - Automatically detects horde vs individual target
+- Notification shows total targets processed
 
 **Horde Handling:**
 - Calculates hits: ceil(range/4) + 1d5
@@ -241,10 +253,11 @@ Flame weapons (Heavy Flamer, Hand Flamer, etc.) use a special workflow because t
 
 ### Tips for GMs
 
-**Targeting Workflow:**
-- Target first token before clicking Attack (plays animation)
-- After damage roll, target each enemy in cone individually
-- Run Flame Attack macro once per target
+**Selection Workflow:**
+- Target first token before clicking Attack (plays animation, optional)
+- After damage roll, **select all enemies in cone** (shift-click or drag-select for blue borders)
+- Run Flame Attack macro once—processes all selected tokens automatically
+- Single-token workflow still supported (select one, run macro, repeat)
 
 **Template Placement:**
 - Drag template from Measured Templates compendium (optional visual aid)
@@ -278,9 +291,15 @@ Flame weapons (Heavy Flamer, Hand Flamer, etc.) use a special workflow because t
 - Verify actor has wounds/magnitude to modify
 
 **Animation not playing**
-- Target token before clicking Attack button
+- Target token before clicking Attack button (for animation only)
 - Check Sequencer and JB2A modules are active
 - Animation is optional, damage still works without it
+
+**Macro not finding selected token**
+- Ensure token(s) have blue border (selected), not red crosshair (targeted)
+- Click token once to select it (shift-click for multiple)
+- Macro uses selected tokens, not targeted tokens
+- At least one token must be selected
 
 ---
 

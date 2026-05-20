@@ -22,7 +22,8 @@ Original flamer workflow rolled damage separately for each target, which was inc
 **New workflow:**
 1. Attack button → rolls damage once, displays in chat with machine-readable metadata
 2. Damage button → disabled for flamers (shows tooltip explaining workflow)
-3. GM runs Flame Attack macro for each target in cone → applies pre-rolled damage
+3. GM selects token in cone and runs Flame Attack macro → applies pre-rolled damage to selected token
+4. Repeat for each token in cone
 
 **Key architectural decision:** Maintain single combat entry point pattern. Use conditional logic within existing methods (`CombatRouter.executeAttack()`, `CombatHelper.weaponDamageRoll()`) rather than creating new methods.
 
@@ -55,6 +56,8 @@ Original flamer workflow rolled damage separately for each target, which was inc
 
 - `getRecentFlamerDamageRolls()` - Parses last 20 chat messages for flamer damage data
 - Dropdown selector shows recent damage rolls with attacker name
+- Uses selected tokens (`canvas.tokens.controlled`) instead of targeted token
+- **Multi-token iteration**: Processes all selected tokens in single macro invocation
 - Removed animation invocations (moved to attack button)
 - Removed AnimationHelper import (no longer needed)
 
@@ -79,9 +82,9 @@ Original flamer workflow rolled damage separately for each target, which was inc
 - 10 tests covering routing, chat output, data attributes, ammunition deduction
 
 **Enhanced suite:** `tests/macros/flame-attack.test.mjs`
-- 14 tests for parser and dropdown functionality
+- 15 tests for parser, dropdown, and multi-token processing functionality
 
-**Total:** 138 suites, 2348 tests passing
+**Total:** 139 suites, 2354 tests passing
 
 ## Files Modified
 

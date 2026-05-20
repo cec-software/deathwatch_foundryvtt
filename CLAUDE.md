@@ -44,7 +44,7 @@ This is a **Foundry VTT v13-v14 game system** for Warhammer 40,000: Deathwatch R
 
 ```bash
 npm install                 # Install dependencies
-npm test                    # Verify installation (2348 tests should pass)
+npm test                    # Verify installation (2354 tests should pass)
 npm run build:all           # Build packs and deploy locally (requires .env setup)
 ```
 
@@ -216,7 +216,7 @@ See `src/module/init/socket.mjs` for registered handlers.
 3. Verify all tests pass
 4. Refactor if needed
 
-**Expected results:** 143 test suites, 2396 passing tests (as of 2026-05-19)
+**Expected results:** 139 test suites, 2354 passing tests (as of 2026-05-20)
 
 **See [.claude/docs/testing.md](.claude/docs/testing.md) and [.claude/memory/testing_standards.md](.claude/memory/testing_standards.md) for complete testing documentation.**
 

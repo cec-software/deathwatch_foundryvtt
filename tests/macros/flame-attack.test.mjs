@@ -29,7 +29,8 @@ describe('flameAttack', () => {
       user: {
         targets: {
           first: jest.fn(() => mockTargetToken)
-        }
+        },
+        isGM: false
       },
       settings: {
         get: jest.fn(() => 'roll')
@@ -45,12 +46,31 @@ describe('flameAttack', () => {
           };
           return mockActors[id] || null;
         })
+      },
+      scenes: {
+        get: jest.fn((sceneId) => {
+          if (sceneId === 'scene1') {
+            return {
+              tokens: {
+                get: jest.fn((tokenId) => {
+                  if (tokenId === 'token1') return { actor: mockTargetActor, object: mockTargetToken };
+                  if (tokenId === 'token2') return { actor: mockTargetActor, object: mockTargetToken };
+                  return null;
+                })
+              }
+            };
+          }
+          return null;
+        })
+      },
+      socket: {
+        emit: jest.fn()
       }
     };
 
     global.canvas = {
       tokens: {
-        controlled: [],
+        controlled: [mockTargetToken],
         get: jest.fn(() => null)
       }
     };
@@ -111,7 +131,8 @@ describe('flameAttack', () => {
     };
     global.ui = {
       notifications: {
-        warn: jest.fn()
+        warn: jest.fn(),
+        info: jest.fn()
       }
     };
     global.foundry = {
@@ -184,8 +205,8 @@ describe('flameAttack', () => {
       expect(global.ui.notifications.warn).toHaveBeenCalledWith('Enter a damage formula.');
     });
 
-    it('warns when no target selected', async () => {
-      global.game.user.targets.first = jest.fn(() => null);
+    it('warns when no token selected', async () => {
+      global.canvas.tokens.controlled = [];
 
       const waitMock = jest.fn(async (config) => {
         const burnButton = config.buttons.find(b => b.action === 'burn');
@@ -195,21 +216,75 @@ describe('flameAttack', () => {
 
       await flameAttack();
 
-      expect(global.ui.notifications.warn).toHaveBeenCalledWith('Target a token before clicking Burn.');
+      expect(global.ui.notifications.warn).toHaveBeenCalledWith('Select at least one token before clicking Burn.');
     });
 
-    it('warns when target has no actor', async () => {
-      global.game.user.targets.first = jest.fn(() => ({ actor: null }));
+    it('processes multiple selected tokens', async () => {
+      const mockToken2 = {
+        actor: {
+          id: 'actor2',
+          name: 'Target 2',
+          type: 'enemy',
+          system: { characteristics: { ag: { value: 40 } } }
+        },
+        id: 'token2',
+        scene: { id: 'scene1' }
+      };
 
+      mockTargetToken.id = 'token1';
+      mockTargetToken.scene = { id: 'scene1' };
+
+      global.canvas.tokens.controlled = [mockTargetToken, mockToken2];
+      global.game.user.isGM = false; // Use socket path to avoid nested dialog complexity
+
+      let burnCallback;
       const waitMock = jest.fn(async (config) => {
         const burnButton = config.buttons.find(b => b.action === 'burn');
-        await burnButton.callback({}, {}, mockDialog);
+        if (burnButton && !burnCallback) {
+          // Capture callback for first (main) dialog only
+          burnCallback = burnButton.callback;
+        }
       });
       global.foundry.applications.api.DialogV2.wait = waitMock;
 
       await flameAttack();
 
-      expect(global.ui.notifications.warn).toHaveBeenCalledWith('Target a token before clicking Burn.');
+      // Manually trigger burn callback to test multi-token iteration
+      if (burnCallback) {
+        await burnCallback({}, {}, mockDialog);
+      }
+
+      // Should emit socket for both targets and show notification
+      expect(global.game.socket.emit).toHaveBeenCalledTimes(2);
+      expect(global.ui.notifications.info).toHaveBeenCalledWith('Flame attack processed for 2 target(s).');
+    });
+
+    it('skips tokens with no actor during multi-token processing', async () => {
+      const tokenNoActor = { actor: null, id: 'token-invalid' };
+      mockTargetToken.id = 'token1';
+      mockTargetToken.scene = { id: 'scene1' };
+
+      global.canvas.tokens.controlled = [mockTargetToken, tokenNoActor];
+      global.game.user.isGM = false;
+
+      let burnCallback;
+      const waitMock = jest.fn(async (config) => {
+        const burnButton = config.buttons.find(b => b.action === 'burn');
+        if (burnButton && !burnCallback) {
+          burnCallback = burnButton.callback;
+        }
+      });
+      global.foundry.applications.api.DialogV2.wait = waitMock;
+
+      await flameAttack();
+
+      if (burnCallback) {
+        await burnCallback({}, {}, mockDialog);
+      }
+
+      // Should emit socket only for valid token (skips null actor)
+      expect(global.game.socket.emit).toHaveBeenCalledTimes(1);
+      expect(global.ui.notifications.info).toHaveBeenCalledWith('Flame attack processed for 2 target(s).');
     });
   });
 

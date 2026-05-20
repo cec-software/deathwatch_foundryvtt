@@ -54,19 +54,26 @@
 
 ## Fire System
 
-### Flame Weapons (weapon quality: `flame`)
+### Flame Weapons & Psychic Powers (quality: `flame`)
 
 **Workflow:**
-1. Click Attack button → rolls damage once, displays in chat (no attack roll)
-2. Optional: Target token to play animation (like standard attacks)
-3. Ammunition deducted (1 round per shot, non-horde actors only)
-4. GM runs Flame Attack macro for each target in cone
-5. Each target makes Agility dodge test and Catch Fire test
+1. Weapons: Click Attack button → rolls damage once, displays in chat (no attack roll)
+2. Psychic Powers: Focus Power Test → on success, rolls damage like weapon
+3. Optional: Target token to play animation (like standard attacks)
+4. Ammunition deducted for weapons only (1 round per shot, non-horde actors)
+5. GM selects all tokens in cone (shift-click or drag-select) and runs Flame Attack macro once
+6. Macro processes all selected tokens automatically: each makes Agility dodge test and Catch Fire test
+7. Alternative: Select and process one token at a time (original single-token workflow)
 
 **Combat routing:**
-- `CombatRouter.executeAttack()` detects flame quality, routes to damage roll
-- `CombatHelper.weaponDamageRoll()` with `isFlamerAttack: true` flag
+- Weapons: `CombatRouter.executeAttack()` detects flame quality, routes to `weaponDamageRoll()`
+- Psychic Powers: `PsychicCombatHelper.focusPowerDialog()` → on success, `_rollPsychicDamage()` detects flame
 - Damage button disabled for flame weapons (tooltip explains workflow)
+
+**Psychic flame powers:**
+- Avenger (Codex discipline) - works exactly like Astartes heavy flamer
+- Penetration: 2×PR (calculated after Focus Power Test)
+- Same chat message format and Flame Attack macro workflow
 
 **Damage application:**
 - Individual targets: Agility dodge test → if failed, apply damage + catch fire test (AG)
@@ -89,13 +96,15 @@
 
 Available in the Macros compendium (Compendium Packs > Deathwatch: Macros):
 
-- 🔥 Flame Attack — Dropdown selector shows recent flamer damage rolls, GM applies to targeted token
-- 🔥 On Fire Round — GM targets token, applies On Fire effects for this round
+- 🔥 Flame Attack — Dropdown selector shows recent flamer damage rolls, GM applies to selected token(s)
+- 🔥 On Fire Round — GM selects token, applies On Fire effects for this round
 
 **Flame Attack macro workflow:**
 - Parses last 20 chat messages for `data-flamer-damage` attributes
 - Dropdown shows attacker name and damage values (e.g., "Brother Marcus (10, Pen 4, Energy)")
 - Defaults to most recent roll
+- GM selects one or more tokens (blue borders) before running macro
+- Macro processes all selected tokens in single invocation
 - Manual entry still available if needed
 
 ---

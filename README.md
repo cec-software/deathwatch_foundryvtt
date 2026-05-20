@@ -4,7 +4,7 @@ A complete game system implementation for [Foundry Virtual Tabletop](https://fou
 
 ![Foundry v13-v14](https://img.shields.io/badge/Foundry-v13--v14-informational)
 ![Version](https://img.shields.io/badge/Version-0.0.2-blue)
-![Tests](https://img.shields.io/badge/Tests-2348%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-2354%20passing-brightgreen)
 
 ---
 
@@ -40,12 +40,14 @@ A complete game system implementation for [Foundry Virtual Tabletop](https://fou
 - **24+ Weapon Qualities**: Accurate, Tearing, Melta, Primitive, Force, Power Field, Twin-Linked, Storm, and more — all automated
 - **Weapon Upgrades**: Attachable modifications (Red-Dot Laser Sight, Telescopic Sight, etc.)
 - **Ammunition Modifiers**: Special ammo types that modify weapon damage, rate of fire, blast radius, and more
-- **Flame Weapons**: Automatic routing for flame-quality weapons
-  - Attack button rolls damage once and displays in chat (no attack roll needed)
+- **Flame Weapons & Powers**: Automatic routing for flame-quality weapons and psychic powers (e.g., Avenger)
+  - Attack/Focus Power button rolls damage once and displays in chat (no attack roll needed)
   - Optional targeting: plays animation toward first targeted token if available
-  - Ammunition tracking: deducts 1 round per shot (non-horde actors only)
-  - GM runs Flame Attack macro for each target in cone to apply damage individually
-  - Each target makes Agility dodge test and Catch Fire test (if hit)
+  - Ammunition tracking: deducts 1 round per shot for weapons (non-horde actors only)
+  - GM selects all tokens in cone (shift-click or drag-select) and runs Flame Attack macro once
+  - Macro processes all selected tokens automatically—each makes Agility dodge test and Catch Fire test
+  - Alternative: Select and process one token at a time (single-token workflow)
+  - Psychic powers with flame quality (Avenger) use identical workflow after successful Focus Power Test
 - **Fire System**: On Fire round processing with damage, fatigue, Willpower tests, Power Armour auto-pass, and extinguish tests
 - **Deathwatch Training**: Auto-confirms Righteous Fury against xenos targets
 - **Initiative**: 1d10 + Agility Bonus + Initiative Bonus
@@ -164,7 +166,7 @@ npm install
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run all tests (2348 tests across 138 suites) |
+| `npm test` | Run all tests (2354 tests across 139 suites) |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run format:json` | Compact + Prettier JSON formatting |
