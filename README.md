@@ -4,7 +4,7 @@ A complete game system implementation for [Foundry Virtual Tabletop](https://fou
 
 ![Foundry v13-v14](https://img.shields.io/badge/Foundry-v13--v14-informational)
 ![Version](https://img.shields.io/badge/Version-0.0.2-blue)
-![Tests](https://img.shields.io/badge/Tests-2298%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-2348%20passing-brightgreen)
 
 ---
 
@@ -40,7 +40,12 @@ A complete game system implementation for [Foundry Virtual Tabletop](https://fou
 - **24+ Weapon Qualities**: Accurate, Tearing, Melta, Primitive, Force, Power Field, Twin-Linked, Storm, and more — all automated
 - **Weapon Upgrades**: Attachable modifications (Red-Dot Laser Sight, Telescopic Sight, etc.)
 - **Ammunition Modifiers**: Special ammo types that modify weapon damage, rate of fire, blast radius, and more
-- **Flame Weapons**: Automatic routing for flame-quality weapons with cone-based targeting and On Fire status
+- **Flame Weapons**: Automatic routing for flame-quality weapons
+  - Attack button rolls damage once and displays in chat (no attack roll needed)
+  - Optional targeting: plays animation toward first targeted token if available
+  - Ammunition tracking: deducts 1 round per shot (non-horde actors only)
+  - GM runs Flame Attack macro for each target in cone to apply damage individually
+  - Each target makes Agility dodge test and Catch Fire test (if hit)
 - **Fire System**: On Fire round processing with damage, fatigue, Willpower tests, Power Armour auto-pass, and extinguish tests
 - **Deathwatch Training**: Auto-confirms Righteous Fury against xenos targets
 - **Initiative**: 1d10 + Agility Bonus + Initiative Bonus
@@ -159,7 +164,7 @@ npm install
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run all tests (2298 tests across 135 suites) |
+| `npm test` | Run all tests (2348 tests across 138 suites) |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run format:json` | Compact + Prettier JSON formatting |

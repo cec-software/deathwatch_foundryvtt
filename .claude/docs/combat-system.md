@@ -56,9 +56,26 @@
 
 ### Flame Weapons (weapon quality: `flame`)
 
-- Cone-based targeting (auto-hit within range)
+**Workflow:**
+1. Click Attack button → rolls damage once, displays in chat (no attack roll)
+2. Optional: Target token to play animation (like standard attacks)
+3. Ammunition deducted (1 round per shot, non-horde actors only)
+4. GM runs Flame Attack macro for each target in cone
+5. Each target makes Agility dodge test and Catch Fire test
+
+**Combat routing:**
+- `CombatRouter.executeAttack()` detects flame quality, routes to damage roll
+- `CombatHelper.weaponDamageRoll()` with `isFlamerAttack: true` flag
+- Damage button disabled for flame weapons (tooltip explains workflow)
+
+**Damage application:**
 - Individual targets: Agility dodge test → if failed, apply damage + catch fire test (AG)
 - Hordes: ceil(range/4) + 1d5 hits, 1.5× multiplier
+
+**Chat message metadata:**
+- `data-flamer-damage`, `data-flamer-pen`, `data-flamer-type`, `data-flamer-range`
+- `data-actor-id`, `data-weapon-name`, `data-timestamp`
+- Parsed by Flame Attack macro for damage application
 
 ### On Fire Status
 
@@ -72,8 +89,14 @@
 
 Available in the Macros compendium (Compendium Packs > Deathwatch: Macros):
 
-- 🔥 Flame Attack — GM targets token, enters damage/pen, applies flame mechanics
+- 🔥 Flame Attack — Dropdown selector shows recent flamer damage rolls, GM applies to targeted token
 - 🔥 On Fire Round — GM targets token, applies On Fire effects for this round
+
+**Flame Attack macro workflow:**
+- Parses last 20 chat messages for `data-flamer-damage` attributes
+- Dropdown shows attacker name and damage values (e.g., "Brother Marcus (10, Pen 4, Energy)")
+- Defaults to most recent roll
+- Manual entry still available if needed
 
 ---
 

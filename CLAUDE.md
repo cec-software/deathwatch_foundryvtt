@@ -28,12 +28,13 @@ This is a **Foundry VTT v13-v14 game system** for Warhammer 40,000: Deathwatch R
 
 - 4 actor types (Character, NPC, Enemy, Horde) with full combat mechanics
 - 17 item types covering weapons, armor, talents, psychic powers, etc.
-- 17 pre-built compendium packs with 800+ items and actors
+- 18 pre-built compendium packs with 800+ items, actors, and measured templates
 - Complex combat system with 24+ weapon qualities, Righteous Fury, critical damage
 - Cohesion & Kill-team system with Solo/Squad Mode abilities
 - Psychic powers with Phenomena/Perils and Tyranid Hive Mind backlash
 - Fire mechanics (On Fire status, flame weapons, extinguish tests)
 - Insanity & Corruption tracking with chapter-specific curses
+- **Measured Templates compendium** — Pre-configured drag-and-drop templates for flamers, grenades, and psychic blasts
 
 ---
 
@@ -43,7 +44,7 @@ This is a **Foundry VTT v13-v14 game system** for Warhammer 40,000: Deathwatch R
 
 ```bash
 npm install                 # Install dependencies
-npm test                    # Verify installation (2396 tests should pass)
+npm test                    # Verify installation (2348 tests should pass)
 npm run build:all           # Build packs and deploy locally (requires .env setup)
 ```
 
@@ -238,6 +239,7 @@ When creating PRs, target the `main` branch.
 - **Initiative formula**: `1d10 + @agBonus + @initiativeBonus`
 - **Enemy auto-folder**: New Enemy/Horde actors auto-move to "Enemies" folder
 - **Skip Defeated**: Combat tracker defaults to skipping defeated combatants
+- **Measured Templates**: Drag from "Measured Templates" compendium to canvas. Templates are pre-configured for common weapons (flamers, grenades) and psychic powers. GM determines which tokens are hit.
 
 ---
 
