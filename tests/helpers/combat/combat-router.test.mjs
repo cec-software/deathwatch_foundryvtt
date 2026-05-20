@@ -89,12 +89,11 @@ describe('CombatRouter', () => {
   });
 
   describe('executeDamage', () => {
-    it('should route to flameAttack when weapon has flame quality', async () => {
+    it('should show notification for flame weapon and not call damage roll', async () => {
       mockWeaponQualityHelper.hasQuality.mockResolvedValueOnce(true);
 
       await CombatRouter.executeDamage(mockActor, mockWeapon);
 
-      expect(mockFlameAttack).toHaveBeenCalledWith(mockWeapon);
       expect(mockCombatHelper.weaponDamageRoll).not.toHaveBeenCalled();
     });
 

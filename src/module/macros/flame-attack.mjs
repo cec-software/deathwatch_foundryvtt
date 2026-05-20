@@ -1,6 +1,42 @@
 import { CombatHelper } from '../helpers/combat/combat.mjs';
 import { FireHelper } from '../helpers/combat/fire-helper.mjs';
-import { AnimationHelper } from '../helpers/ui/animation-helper.mjs';
+
+/**
+ * Parse recent chat messages for flamer damage rolls.
+ * Looks for messages with data-flamer-damage attributes and returns their data.
+ * @returns {Array<{damage: string, pen: number, damageType: string, attackerName: string}>}
+ */
+export function getRecentFlamerDamageRolls() {
+    const messages = game.messages.contents.slice(-20); // Last 20 messages
+    const results = [];
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const message = messages[i];
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(message.content, 'text/html');
+        const flamerElement = doc.querySelector('[data-flamer-damage]');
+
+        if (flamerElement) {
+            const damage = flamerElement.dataset.flamerDamage;
+            const pen = parseInt(flamerElement.dataset.flamerPen) || 0;
+            const damageType = flamerElement.dataset.flamerType || 'Energy';
+
+            // Retrieve attacker name from actor ID
+            const actorId = flamerElement.dataset.actorId;
+            const actor = game.actors.get(actorId);
+            const attackerName = actor?.name || 'Unknown';
+
+            results.push({
+                damage,
+                pen,
+                damageType,
+                attackerName
+            });
+        }
+    }
+
+    return results;
+}
 
 /**
  * Handle flame attack against a horde target.
@@ -14,16 +50,6 @@ import { AnimationHelper } from '../helpers/ui/animation-helper.mjs';
  * @param {Token} targetToken - Target token for animation
  */
 async function handleHordeFlameAttack(targetActor, targetName, weaponRange, damageFormula, penetration, damageType, sourceToken, targetToken) {
-    // Play flame animation
-    const librariesAvailable = AnimationHelper.areAnimationLibrariesAvailable();
-    console.log('[Flame Animation] Libraries available:', librariesAvailable, 'Source token:', sourceToken?.id, 'Target token:', targetToken?.id);
-
-    if (librariesAvailable && sourceToken && targetToken) {
-        const flameConfig = AnimationHelper.getAnimationConfig('flame');
-        await AnimationHelper.playWeaponAnimation(sourceToken, targetToken, flameConfig, 1);
-        console.log('[Flame Animation] Animation triggered for horde attack');
-    }
-
     const staticHits = Math.ceil(weaponRange / 4);
     const flameRoll = await new Roll('1d5').evaluate();
     const totalHits = staticHits + flameRoll.total;
@@ -54,15 +80,6 @@ async function handleHordeFlameAttack(targetActor, targetName, weaponRange, dama
  * @param {Token} targetToken - Target token for animation
  */
 async function handleFlameDodgeRoll(targetActor, targetName, ag, dodgeDialog, damageFormula, penetration, damageType, sourceToken, targetToken) {
-    // Play flame animation when dodge is rolled
-    const librariesAvailable = AnimationHelper.areAnimationLibrariesAvailable();
-    console.log('[Flame Animation] Libraries available:', librariesAvailable, 'Source token:', sourceToken?.id, 'Target token:', targetToken?.id);
-
-    if (librariesAvailable && sourceToken && targetToken) {
-        const flameConfig = AnimationHelper.getAnimationConfig('flame');
-        await AnimationHelper.playWeaponAnimation(sourceToken, targetToken, flameConfig, 1);
-        console.log('[Flame Animation] Animation triggered for individual attack');
-    }
     const dodgeMod = parseInt(dodgeDialog.element.querySelector('#dodgeMod').value) || 0;
     const dodgeRoll = await new Roll('1d100').evaluate();
     const dodgeResult = FireHelper.resolveDodgeFlameTest(ag, dodgeRoll.total, dodgeMod);
@@ -202,12 +219,42 @@ async function handleIndividualFlameAttack(targetActor, targetName, damageFormul
  * @param {Item} [weapon=null] - Optional weapon item to pre-fill dialog values
  */
 export async function flameAttack(weapon = null) {
-    // Pre-fill values from weapon if provided
-    const defaultDamage = weapon ? (weapon.system.effectiveDamage || weapon.system.dmg || '') : '';
-    const defaultPen = weapon ? (weapon.system.effectivePenetration ?? weapon.system.penetration ?? weapon.system.pen ?? 0) : 0;
-    const defaultDmgType = weapon ? (weapon.system.dmgType || 'Energy') : 'Energy';
-    const defaultRange = weapon ? (parseInt(weapon.system.effectiveRange || weapon.system.range) || 20) : 20;
+    // Get recent flamer damage rolls
+    const recentRolls = getRecentFlamerDamageRolls();
+
+    // Pre-fill values from weapon if provided, otherwise use most recent roll
+    let defaultDamage = '';
+    let defaultPen = 0;
+    let defaultDmgType = 'Energy';
+    let defaultRange = 20;
+
+    if (weapon) {
+        // Weapon takes priority
+        defaultDamage = weapon.system.effectiveDamage || weapon.system.dmg || '';
+        defaultPen = weapon.system.effectivePenetration ?? weapon.system.penetration ?? weapon.system.pen ?? 0;
+        defaultDmgType = weapon.system.dmgType || 'Energy';
+        defaultRange = parseInt(weapon.system.effectiveRange || weapon.system.range) || 20;
+    } else if (recentRolls.length > 0) {
+        // Use most recent roll as default
+        const mostRecent = recentRolls[0];
+        defaultDamage = mostRecent.damage;
+        defaultPen = mostRecent.pen;
+        defaultDmgType = mostRecent.damageType;
+    }
+
+    // Build dropdown options
+    let dropdownOptions = '<option value="">-- None --</option>\n';
+    recentRolls.forEach((roll, index) => {
+        const selected = index === 0 && !weapon ? 'selected' : '';
+        dropdownOptions += `        <option value="${index}" ${selected}>${roll.attackerName} (${roll.damage}, Pen ${roll.pen}, ${roll.damageType})</option>\n`;
+    });
+
     const content = `
+      <div class="form-group">
+        <label>Select Recent Damage Source:</label>
+        <select id="damageSource">
+${dropdownOptions}        </select>
+      </div>
       <div class="form-group">
         <label>Damage:</label>
         <input type="text" id="flameDamage" placeholder="e.g., 1d10+4" value="${defaultDamage}" />
@@ -229,6 +276,31 @@ export async function flameAttack(weapon = null) {
     foundry.applications.api.DialogV2.wait({
         window: { title: '🔥 Flame Attack' },
         content,
+        render: (event, dialog) => {
+            // Add change listener to dropdown
+            const el = dialog.element;
+            const dropdown = el.querySelector('#damageSource');
+            const damageInput = el.querySelector('#flameDamage');
+            const penInput = el.querySelector('#flamePen');
+            const dmgTypeInput = el.querySelector('#flameDmgType');
+
+            dropdown?.addEventListener('change', (e) => {
+                const selectedIndex = e.target.value;
+
+                if (selectedIndex === '') {
+                    // None selected - clear fields
+                    damageInput.value = '';
+                    penInput.value = '0';
+                    dmgTypeInput.value = 'Energy';
+                } else {
+                    // Populate from selected roll
+                    const roll = recentRolls[parseInt(selectedIndex)];
+                    damageInput.value = roll.damage;
+                    penInput.value = roll.pen;
+                    dmgTypeInput.value = roll.damageType;
+                }
+            });
+        },
         buttons: [
             {
                 label: '🔥 Burn', action: 'burn',

@@ -1,7 +1,6 @@
 import { CombatHelper } from './combat.mjs';
 import { PsychicCombatHelper } from './psychic-combat.mjs';
 import { WeaponQualityHelper } from './weapon-quality-helper.mjs';
-import { flameAttack } from '../../macros/flame-attack.mjs';
 
 /**
  * Unified combat routing system.
@@ -33,7 +32,6 @@ export class CombatRouter {
       case 'CombatHelper': return CombatHelper;
       case 'PsychicCombatHelper': return PsychicCombatHelper;
       case 'WeaponQualityHelper': return WeaponQualityHelper;
-      case 'flameAttack': return flameAttack;
       default: throw new Error(`Unknown helper: ${name}`);
     }
   }
@@ -57,8 +55,19 @@ export class CombatRouter {
    */
   static async executeAttack(actor, item) {
     switch (item.type) {
-      case 'weapon':
+      case 'weapon': {
+        // Check for flame quality first
+        const WeaponQualityHelper = this._getHelper('WeaponQualityHelper');
+        const isFlame = await WeaponQualityHelper.hasQuality(item, 'flame');
+        if (isFlame) {
+          // Flamers skip attack roll, go straight to damage output
+          const CombatHelper = this._getHelper('CombatHelper');
+          return await CombatHelper.weaponDamageRoll(actor, item, { isFlamerAttack: true });
+        }
+
+        // Standard weapon attack dialog
         return await this._getHelper('CombatHelper').weaponAttackDialog(actor, item);
+      }
 
       case 'psychic-power':
         return await this._getHelper('PsychicCombatHelper').focusPowerDialog(actor, item);
@@ -90,12 +99,18 @@ export class CombatRouter {
   static async executeDamage(actor, item) {
     // Priority 1: Weapon-specific routing
     if (item.type === 'weapon') {
-      // Check for flame quality
-      const WeaponQualityHelper = this._getHelper('WeaponQualityHelper');
-      const isFlame = await WeaponQualityHelper.hasQuality(item, 'flame');
-      if (isFlame) {
-        const flameAttack = this._getHelper('flameAttack');
-        return await flameAttack(item);
+      // Check if weapon has flame quality
+      const isFlameWeapon = await this._getHelper('WeaponQualityHelper').hasQuality(
+        item,
+        'flame'
+      );
+
+      if (isFlameWeapon) {
+        // Show notification and return early - flame weapons require template placement
+        ui.notifications.info(
+          'Use Attack button to roll damage, then run Flame Attack macro for each target.'
+        );
+        return;
       }
 
       // Standard weapon damage

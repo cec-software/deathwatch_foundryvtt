@@ -179,7 +179,7 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
 
     // Prepare type-specific data using data preparers
     if (this.actor.type === 'character') {
-      CharacterDataPreparer.prepare(context, this.actor);
+      await CharacterDataPreparer.prepare(context, this.actor);
       ItemListPreparer.prepare(context, this.actor);
 
       // Split demeanours into personal and chapter
