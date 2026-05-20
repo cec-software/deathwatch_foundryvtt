@@ -1,5 +1,4 @@
-import { CombatHelper } from '../helpers/combat/combat.mjs';
-import { PsychicCombatHelper } from '../helpers/combat/psychic-combat.mjs';
+import { CombatRouter } from '../helpers/combat/combat-router.mjs';
 import { Sanitizer } from '../helpers/sanitizer.mjs';
 
 /**
@@ -56,13 +55,13 @@ export async function rollItemMacro(itemUuid, options = {}) {
 
         // action: "damage" goes straight to damage roll
         if (hasOptions && options.action === 'damage') {
-            CombatHelper.weaponDamageRoll(item.parent, item);
+            CombatRouter.executeDamage(item.parent, item);
             return;
         }
 
         // With options: skip Attack/Damage choice, go straight to attack
         if (hasOptions) {
-            CombatHelper.weaponAttackDialog(item.parent, item, options);
+            CombatRouter.executeAttack(item.parent, item, options);
             return;
         }
 
@@ -75,12 +74,12 @@ export async function rollItemMacro(itemUuid, options = {}) {
                 {
                     icon: '<i class="fas fa-crosshairs"></i>',
                     label: "Attack", action: "attack",
-                    callback: () => CombatHelper.weaponAttackDialog(item.parent, item)
+                    callback: () => CombatRouter.executeAttack(item.parent, item)
                 },
                 {
                     icon: '<i class="fas fa-burst"></i>',
                     label: "Damage", action: "damage",
-                    callback: () => CombatHelper.weaponDamageRoll(item.parent, item)
+                    callback: () => CombatRouter.executeDamage(item.parent, item)
                 }
             ]
         });
@@ -88,7 +87,7 @@ export async function rollItemMacro(itemUuid, options = {}) {
     }
 
     if (item.type === 'psychic-power') {
-        PsychicCombatHelper.focusPowerDialog(item.parent, item);
+        CombatRouter.executeDamage(item.parent, item);
         return;
     }
 

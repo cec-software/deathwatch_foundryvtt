@@ -164,6 +164,15 @@ global.foundry = {
       Items: { unregisterSheet: jest.fn(), registerSheet: jest.fn() }
     }
   },
+  canvas: {
+    placeables: {
+      Region: class Region {
+        constructor(document) {
+          this.document = document;
+        }
+      }
+    }
+  },
   applications: {
     api: {
       ApplicationV2: class ApplicationV2 {

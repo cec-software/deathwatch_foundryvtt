@@ -6,6 +6,7 @@ describe('RollHandler', () => {
   let mockActor;
   let mockRollExecutor;
   let mockCombatHelper;
+  let mockCombatRouter;
 
   beforeEach(async () => {
     // Mock game.user
@@ -62,6 +63,12 @@ describe('RollHandler', () => {
       clearJam: jest.fn(),
     };
 
+    // Mock CombatRouter
+    mockCombatRouter = {
+      executeAttack: jest.fn(),
+      executeDamage: jest.fn(),
+    };
+
     // Import RollHandler and inject mocks
     const module = await import('../../src/module/token-action-hud/roll-handler.mjs');
     const BaseRollHandler = class {
@@ -70,11 +77,11 @@ describe('RollHandler', () => {
         this.token = token;
       }
     };
-    RollHandler = module.createRollHandler(BaseRollHandler, mockRollExecutor, mockCombatHelper);
+    RollHandler = module.createRollHandler(BaseRollHandler, mockRollExecutor, mockCombatHelper, null, mockCombatRouter);
   });
 
   describe('handleAction', () => {
-    test('should decode weapon attack action and call CombatHelper.weaponAttackDialog', async () => {
+    test('should decode weapon attack action and call CombatRouter.executeAttack', async () => {
       const handler = new RollHandler(mockActor, mockToken);
       const weaponId = 'weapon-abc123';
       const encodedValue = `weapon|${weaponId}|attack`;
@@ -90,7 +97,7 @@ describe('RollHandler', () => {
 
       await handler.handleAction({ actionId: 'weaponAttack', encodedValue });
 
-      expect(mockCombatHelper.weaponAttackDialog).toHaveBeenCalledWith(mockActor, mockWeapon);
+      expect(mockCombatRouter.executeAttack).toHaveBeenCalledWith(mockActor, mockWeapon);
     });
 
     test('should decode skill action and call RollExecutor.showSkillDialog', async () => {
@@ -192,7 +199,7 @@ describe('RollHandler', () => {
       expect(mockCombatHelper.clearJam).not.toHaveBeenCalled();
     });
 
-    test('should show pending notification for damage action', async () => {
+    test('should call CombatRouter.executeDamage for damage action', async () => {
       const handler = new RollHandler(mockActor, mockToken);
       const weaponId = 'weapon-abc123';
       const encodedValue = `weapon|${weaponId}|damage`;
@@ -208,7 +215,7 @@ describe('RollHandler', () => {
 
       await handler.handleAction({ actionId: 'weaponDamage', encodedValue });
 
-      expect(ui.notifications.info).toHaveBeenCalledWith('Damage rolls not yet implemented.');
+      expect(mockCombatRouter.executeDamage).toHaveBeenCalledWith(mockActor, mockWeapon);
     });
 
     test('should show pending notification for extinguish action', async () => {

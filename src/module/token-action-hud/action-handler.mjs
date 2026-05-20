@@ -289,38 +289,26 @@ export function initializeActionHandler(coreModule) {
      * @param {Object} groupIds - Object with group IDs as keys
      */
     async buildSystemActions(groupIds) {
-      console.log("[TAH ActionHandler] buildSystemActions called");
-      console.log("[TAH ActionHandler] groupIds:", groupIds);
-      console.log("[TAH ActionHandler] this.actors:", this.actors);
-      console.log("[TAH ActionHandler] this.actor:", this.actor);
-
       // Get first actor from token (TAH Core sets this.actors)
       if (!this.actors || this.actors.length === 0) {
-        console.log("[TAH ActionHandler] No actors available");
         return;
       }
       const actor = this.actors[0];
-      console.log("[TAH ActionHandler] Using actor:", actor.name, actor.type);
 
       // Build actions for each requested group (TAH Core passes array of group IDs)
       if (groupIds.includes("ranged-weapons")) {
-        console.log("[TAH ActionHandler] Building ranged weapons");
         this._buildRangedWeapons(actor);
       }
       if (groupIds.includes("melee-weapons")) {
-        console.log("[TAH ActionHandler] Building melee weapons");
         this._buildMeleeWeapons(actor);
       }
       if (groupIds.includes("grenades")) {
-        console.log("[TAH ActionHandler] Building grenades");
         this._buildGrenades(actor);
       }
       if (groupIds.includes("basic-skills")) {
-        console.log("[TAH ActionHandler] Building basic skills");
         this._buildBasicSkills(actor);
       }
       if (groupIds.includes("advanced-skills")) {
-        console.log("[TAH ActionHandler] Building advanced skills");
         this._buildAdvancedSkills(actor);
       }
       // Characteristics - check if any char group is requested
@@ -336,16 +324,12 @@ export function initializeActionHandler(coreModule) {
         "char-fs"
       ];
       if (charGroups.some((id) => groupIds.includes(id))) {
-        console.log("[TAH ActionHandler] Building characteristics");
         this._buildCharacteristics(actor);
       }
       // Psychic Powers
       if (groupIds.includes("psychic-powers")) {
-        console.log("[TAH ActionHandler] Building psychic powers");
         this._buildPsychicPowers(actor);
       }
-
-      console.log("[TAH ActionHandler] buildSystemActions complete");
     }
 
     // ========================================
@@ -594,12 +578,6 @@ export function initializeActionHandler(coreModule) {
      * @param {Object} actor - The actor
      */
     _buildBasicSkills(actor) {
-      console.log("[TAH ActionHandler] Building basic skills");
-      console.log(
-        "[TAH ActionHandler] actor.system.skills:",
-        actor.system.skills
-      );
-
       // Get selected skills from settings
       const selectedSkills =
         game.settings.get("deathwatch", "tahSkillList") || [];
@@ -630,12 +608,6 @@ export function initializeActionHandler(coreModule) {
 
           return { key, label, total };
         });
-
-      console.log(
-        "[TAH ActionHandler] Basic skills found:",
-        skills.length,
-        skills.map((s) => s.label)
-      );
 
       const actions = skills.map((skill) => ({
         id: `skill-${skill.key}`,

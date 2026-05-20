@@ -5,6 +5,7 @@ import { handleFlameDodgePrompt } from "../macros/flame-attack.mjs";
 import { Logger } from "../helpers/logger.mjs";
 import { RollExecutor } from "../helpers/roll-executor.mjs";
 import { CombatHelper } from "../helpers/combat/combat.mjs";
+import { CombatRouter } from "../helpers/combat/combat-router.mjs";
 
 /**
  * Handles socket communication for player-initiated world setting changes.
@@ -245,7 +246,7 @@ async function _handleCombatAction(actor, decoded) {
 
 /**
  * Handle weapon attack action
- * Delegates to CombatHelper.weaponAttackDialog (same as RollHandler)
+ * Delegates to CombatRouter (same as RollHandler)
  *
  * @param {Actor} actor - Actor performing attack
  * @param {Object} decoded - Decoded action { type, id, subaction }
@@ -258,7 +259,7 @@ async function _handleWeaponAction(actor, decoded) {
     return; // Fail silently - weapon not found
   }
 
-  await CombatHelper.weaponAttackDialog(actor, weapon);
+  await CombatRouter.executeAttack(actor, weapon);
 }
 
 /**

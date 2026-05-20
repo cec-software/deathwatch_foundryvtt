@@ -201,4 +201,72 @@ describe('CharacterDataPreparer', () => {
       expect(skill.masteredRankRequired).toBe(5);
     });
   });
+
+  describe('prepareWeapons', () => {
+    beforeEach(() => {
+      // Mock game.packs.get for weapon-qualities compendium
+      global.game = {
+        packs: {
+          get: jest.fn((packId) => {
+            if (packId === 'deathwatch.weapon-qualities') {
+              return {
+                getDocument: jest.fn(async (qualityId) => {
+                  if (qualityId === 'flame-quality-id') {
+                    return { system: { key: 'flame' } };
+                  }
+                  if (qualityId === 'tearing-quality-id') {
+                    return { system: { key: 'tearing' } };
+                  }
+                  return null;
+                })
+              };
+            }
+            return null;
+          })
+        }
+      };
+    });
+
+    it('adds hasFlame flag to weapon with flame quality', async () => {
+      const context = {
+        items: [
+          {
+            name: 'Hand Flamer',
+            type: 'weapon',
+            _id: 'weapon1',
+            system: {
+              equipped: true,
+              attachedQualities: ['flame-quality-id']
+            }
+          }
+        ]
+      };
+
+      await CharacterDataPreparer.prepareWeapons(context);
+
+      const weapon = context.items.find(i => i.name === 'Hand Flamer');
+      expect(weapon.hasFlame).toBe(true);
+    });
+
+    it('sets hasFlame to false for weapon without flame quality', async () => {
+      const context = {
+        items: [
+          {
+            name: 'Bolter',
+            type: 'weapon',
+            _id: 'weapon2',
+            system: {
+              equipped: true,
+              attachedQualities: ['tearing-quality-id']
+            }
+          }
+        ]
+      };
+
+      await CharacterDataPreparer.prepareWeapons(context);
+
+      const weapon = context.items.find(i => i.name === 'Bolter');
+      expect(weapon.hasFlame).toBe(false);
+    });
+  });
 });

@@ -169,6 +169,23 @@ export class CombatHelper {
 
     const speaker = FoundryAdapter.getChatSpeaker(actor);
     await FoundryAdapter.sendRollToChat(roll, { speaker, flavor });
+
+    // Deduct ammunition (flamers consume 1 round per shot)
+    const clip = weapon.system.clip;
+    const hasAmmoManagement = clip && clip !== '—' && clip !== '-' && clip !== '';
+    const isHorde = actor.type === 'horde';
+
+    if (!isHorde && hasAmmoManagement && weapon.system.loadedAmmo) {
+      const loadedAmmo = actor.items.get(weapon.system.loadedAmmo);
+      if (loadedAmmo) {
+        const newAmmoValue = Math.max(0, loadedAmmo.system.capacity.value - 1);
+        await loadedAmmo.update({ 'system.capacity.value': newAmmoValue });
+        if (newAmmoValue === 0) {
+          FoundryAdapter.showNotification('warn', `${safeWeaponName} is out of ammunition!`);
+        }
+        actor.sheet.render(false);
+      }
+    }
   }
 
   /**
@@ -560,21 +577,98 @@ export class CombatHelper {
    * Pre-loads attack roll data from lastAttackRoll/lastAttackTarget state.
    * @param {Actor} actor - Attacking actor
    * @param {Item} weapon - Weapon item
+   * @param {Object} [options] - Optional parameters
+   * @param {boolean} [options.isFlamerAttack=false] - If true, create simple chat message for Flame Attack macro consumption
    * @example
    * // After an attack roll, roll damage
    * await CombatHelper.weaponDamageRoll(actor, boltgun);
    */
   /* istanbul ignore next */
-  static async weaponDamageRoll(actor, weapon) {
-    // Check if weapon has Flame quality - redirect to flame attack
-    const isFlame = await WeaponQualityHelper.hasQuality(weapon, 'flame');
-    if (isFlame) {
-      // Pre-fill flame attack dialog with weapon data
-      return await flameAttack(weapon);
-    }
-
+  static async weaponDamageRoll(actor, weapon, options = {}) {
     const dmg = weapon.system.effectiveDamage || weapon.system.dmg;
     if (!dmg) return ui.notifications.warn("This weapon has no damage value.");
+
+    // Flamer attack: create simple chat message with data attributes for macro consumption
+    if (options.isFlamerAttack) {
+      const dmg = weapon.system.effectiveDamage || weapon.system.dmg;
+      if (!dmg) {
+        ui.notifications.warn("This weapon has no damage value.");
+        return;
+      }
+
+      // Roll damage
+      const damageRoll = await new Roll(dmg).evaluate();
+      const damage = damageRoll.total;
+
+      // Extract weapon data
+      const penetration = weapon.system.effectivePenetration ?? weapon.system.penetration ?? weapon.system.pen ?? 0;
+      const damageType = weapon.system.dmgType || 'Energy';
+      const range = parseInt(weapon.system.effectiveRange || weapon.system.range) || 20;
+      const timestamp = Date.now();
+      const safeWeaponName = Sanitizer.escape(weapon.name);
+
+
+      // Play flame animation if target is selected (optional)
+      const attackerToken = actor.getActiveTokens?.()?.[0] || canvas?.tokens?.controlled?.[0];
+      const targetToken = game?.user?.targets?.first();
+
+      if (attackerToken && targetToken) {
+        // Import AnimationHelper dynamically to avoid circular dependencies
+        const { AnimationHelper } = await import('../ui/animation-helper.mjs');
+        const librariesAvailable = AnimationHelper.areAnimationLibrariesAvailable();
+        
+        if (librariesAvailable) {
+          const flameConfig = AnimationHelper.getAnimationConfig('flame');
+          await AnimationHelper.playWeaponAnimation(attackerToken, targetToken, flameConfig, 1);
+        }
+      }
+
+      // Create chat message with machine-readable metadata
+      const content = `
+        <div class="flamer-damage-roll"
+             data-flamer-damage="${damage}"
+             data-flamer-pen="${penetration}"
+             data-flamer-type="${Sanitizer.escape(damageType)}"
+             data-flamer-range="${range}"
+             data-actor-id="${actor.id}"
+             data-weapon-name="${safeWeaponName}"
+             data-timestamp="${timestamp}">
+          <h3>🔥 Flamer: ${safeWeaponName}</h3>
+          <p><strong>Damage:</strong> ${damage}</p>
+          <p><strong>Penetration:</strong> ${penetration}</p>
+          <p><strong>Damage Type:</strong> ${Sanitizer.escape(damageType)}</p>
+          <p><strong>Range:</strong> ${range}m</p>
+          <em>Run Flame Attack macro for each target in cone.</em>
+        </div>
+      `;
+
+      await ChatMessage.create({
+        speaker: ChatMessage.getSpeaker({ actor }),
+        content,
+        rolls: [damageRoll], // Preserve roll object for dice-so-nice
+        rollMode: game.settings.get('core', 'rollMode')
+      });
+
+
+      // Deduct ammunition (flamers consume 1 round per shot)
+      const clip = weapon.system.clip;
+      const hasAmmoManagement = clip && clip !== '—' && clip !== '-' && clip !== '';
+      const isHorde = actor.type === 'horde';
+
+      if (!isHorde && hasAmmoManagement && weapon.system.loadedAmmo) {
+        const loadedAmmo = actor.items.get(weapon.system.loadedAmmo);
+        if (loadedAmmo) {
+          const newAmmoValue = Math.max(0, loadedAmmo.system.capacity.value - 1);
+          await loadedAmmo.update({ 'system.capacity.value': newAmmoValue });
+          if (newAmmoValue === 0) {
+            ui.notifications.warn(`${safeWeaponName} is out of ammunition!`);
+          }
+          actor.sheet.render(false);
+        }
+      }
+
+      return;
+    }
 
     const defaultRoll = this.lastAttackRoll || '';
     const defaultTarget = this.lastAttackTarget || '';

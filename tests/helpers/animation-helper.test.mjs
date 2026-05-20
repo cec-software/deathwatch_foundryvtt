@@ -288,7 +288,7 @@ describe('AnimationHelper', () => {
       const result = AnimationHelper.getAnimationConfig('flame');
 
       expect(result).toEqual({
-        file: 'jb2a.breath_weapons02.burst.cone.fire.orange.01',
+        file: 'jb2a.burning_hands.01.orange',
         delay: 0
       });
     });

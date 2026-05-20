@@ -7,6 +7,7 @@
 
 import { RollExecutor } from '../helpers/roll-executor.mjs';
 import { CombatHelper } from '../helpers/combat/combat.mjs';
+import { CombatRouter } from '../helpers/combat/combat-router.mjs';
 import { PsychicCombatHelper } from '../helpers/combat/psychic-combat.mjs';
 import { CHARACTERISTIC_LABELS } from '../helpers/constants/characteristic-constants.mjs';
 
@@ -18,9 +19,10 @@ export let RollHandler = null;
  * @param {Object} rollExecutor - RollExecutor dependency (for testing)
  * @param {Object} combatHelper - CombatHelper dependency (for testing)
  * @param {Object} psychicCombatHelper - PsychicCombatHelper dependency (for testing)
+ * @param {Object} combatRouter - CombatRouter dependency (for testing)
  * @returns {class} RollHandler class
  */
-export function createRollHandler(BaseRollHandler, rollExecutor = RollExecutor, combatHelper = CombatHelper, psychicCombatHelper = PsychicCombatHelper) {
+export function createRollHandler(BaseRollHandler, rollExecutor = RollExecutor, combatHelper = CombatHelper, psychicCombatHelper = PsychicCombatHelper, combatRouter = CombatRouter) {
   return class RollHandler extends BaseRollHandler {
     /**
      * Handle action execution (legacy test interface)
@@ -88,14 +90,11 @@ export function createRollHandler(BaseRollHandler, rollExecutor = RollExecutor, 
       if (!weapon) return;
 
       if (subAction === 'attack') {
-        await combatHelper.weaponAttackDialog(this.actor, weapon);
+        await combatRouter.executeAttack(this.actor, weapon);
       } else if (subAction === 'unjam') {
         await combatHelper.clearJam(this.actor, weapon);
       } else if (subAction === 'damage') {
-        // TODO: Implement damage-only roll
-        if (typeof ui !== 'undefined') {
-          ui.notifications.info('Damage rolls not yet implemented.');
-        }
+        await combatRouter.executeDamage(this.actor, weapon);
       }
     }
 
@@ -257,13 +256,13 @@ export function initializeRollHandler(coreModule) {
 
       switch (subaction) {
         case 'attack':
-          // Delegate to existing method
-          await CombatHelper.weaponAttackDialog(this.actor, weapon);
+          // Delegate to combat router
+          await game.deathwatch.CombatRouter.executeAttack(this.actor, weapon);
           break;
 
         case 'damage':
-          // Delegate to existing damage roll method
-          await CombatHelper.weaponDamageRoll(this.actor, weapon);
+          // Delegate to combat router
+          await game.deathwatch.CombatRouter.executeDamage(this.actor, weapon);
           break;
 
         default:
@@ -331,7 +330,7 @@ export function initializeRollHandler(coreModule) {
         return;
       }
 
-      await PsychicCombatHelper.focusPowerDialog(this.actor, power);
+      await game.deathwatch.CombatRouter.executeDamage(this.actor, power);
     }
   };
 }

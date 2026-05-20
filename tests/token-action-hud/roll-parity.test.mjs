@@ -110,6 +110,16 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
       return null;
     });
 
+    // Mock CombatRouter to delegate to CombatHelper (simulating real behavior)
+    const mockCombatRouter = {
+      executeAttack: jest.fn(async (actor, item) => {
+        return await CombatHelper.weaponAttackDialog(actor, item);
+      }),
+      executeDamage: jest.fn(async (actor, item) => {
+        return await CombatHelper.weaponDamageRoll(actor, item);
+      }),
+    };
+
     // Import RollHandler and inject mocks
     const rollHandlerModule = await import('../../src/module/token-action-hud/roll-handler.mjs');
     const BaseRollHandler = class {
@@ -118,7 +128,7 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
         this.token = token;
       }
     };
-    RollHandler = rollHandlerModule.createRollHandler(BaseRollHandler, RollExecutor, CombatHelper);
+    RollHandler = rollHandlerModule.createRollHandler(BaseRollHandler, RollExecutor, CombatHelper, null, mockCombatRouter);
   });
 
   describe('Contract Tests (Method Signatures)', () => {
@@ -292,7 +302,7 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
       const mockWeapon = {
         id: weaponId,
         name: 'Bolter',
-        type: 'rangedWeapon',
+        type: 'weapon',
         system: { dmg: '1d10+5', penetration: 4 },
       };
 
@@ -323,7 +333,7 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
       const mockWeapon = {
         id: weaponId,
         name: 'Chainsword',
-        type: 'meleeWeapon',
+        type: 'weapon',
         system: { dmg: '1d10+2', penetration: 2 },
       };
 
@@ -351,7 +361,7 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
       const mockWeapon = {
         id: weaponId,
         name: 'Frag Grenade',
-        type: 'grenade',
+        type: 'weapon',
         system: { dmg: '2d10', penetration: 0 },
       };
 
@@ -371,7 +381,7 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
       // Assert: Identical parameters
       expect(tahCall.actor).toBe(sheetCall.actor);
       expect(tahCall.weapon).toBe(sheetCall.weapon);
-      expect(tahCall.weapon.type).toBe('grenade');
+      expect(tahCall.weapon.type).toBe('weapon');
     });
   });
 
@@ -419,7 +429,7 @@ describe('TAH Roll Parity (Anti-Duplication)', () => {
       const mockWeapon = {
         id: weaponId,
         name: 'Bolter',
-        type: 'rangedWeapon',
+        type: 'weapon',
         system: { dmg: '1d10+5', penetration: 4 },
       };
 

@@ -9,11 +9,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This project uses a three-tier documentation system:
 
 - **CLAUDE.md** (this file) → Quick start + essential commands + pointers to detailed docs
-- **[.claude/memory/](\.claude\memory\MEMORY.md)** → Session learnings, workflow preferences, project history (evolves over time)
-- **[.claude/docs/](\.claude\docs\README.md)** → Deep-dive developer reference documentation (loaded on demand)
+- **[.claude/memory/](.claude\memory\MEMORY.md)** → Session learnings, workflow preferences, project history (evolves over time)
+- **[.claude/docs/](.claude\docs\README.md)** → Deep-dive developer reference documentation (loaded on demand)
 - **[docs/](docs/)** → User-facing guides for GMs and players (not for Claude)
 
 **When to read what:**
+
 - Starting a session? Read this file (CLAUDE.md)
 - Working on a specific subsystem? Read the relevant `.claude/docs/` file
 - Need workflow context? Check `.claude/memory/` files
@@ -23,16 +24,17 @@ This project uses a three-tier documentation system:
 
 ## System Overview
 
-This is a **Foundry VTT v13 game system** for Warhammer 40,000: Deathwatch RPG. It implements:
+This is a **Foundry VTT v13-v14 game system** for Warhammer 40,000: Deathwatch RPG. It implements:
 
 - 4 actor types (Character, NPC, Enemy, Horde) with full combat mechanics
 - 17 item types covering weapons, armor, talents, psychic powers, etc.
-- 17 pre-built compendium packs with 800+ items and actors
+- 18 pre-built compendium packs with 800+ items, actors, and measured templates
 - Complex combat system with 24+ weapon qualities, Righteous Fury, critical damage
 - Cohesion & Kill-team system with Solo/Squad Mode abilities
 - Psychic powers with Phenomena/Perils and Tyranid Hive Mind backlash
 - Fire mechanics (On Fire status, flame weapons, extinguish tests)
 - Insanity & Corruption tracking with chapter-specific curses
+- **Measured Templates compendium** — Pre-configured drag-and-drop templates for flamers, grenades, and psychic blasts
 
 ---
 
@@ -42,11 +44,12 @@ This is a **Foundry VTT v13 game system** for Warhammer 40,000: Deathwatch RPG. 
 
 ```bash
 npm install                 # Install dependencies
-npm test                    # Verify installation (2129 tests should pass)
+npm test                    # Verify installation (2354 tests should pass)
 npm run build:all           # Build packs and deploy locally (requires .env setup)
 ```
 
 **First-time setup**: Create `.env` file with `LOCAL_DIR` pointing to your Foundry systems directory:
+
 ```
 LOCAL_DIR=C:\Users\YourName\AppData\Local\FoundryVTT\Data\systems\deathwatch
 ```
@@ -58,6 +61,7 @@ LOCAL_DIR=C:\Users\YourName\AppData\Local\FoundryVTT\Data\systems\deathwatch
 ## Essential Commands
 
 ### Testing
+
 ```bash
 npm test                                          # Run all tests
 npm test -- tests/combat/combat.test.mjs          # Run specific test file
@@ -66,6 +70,7 @@ npm run test:coverage                             # Generate coverage report
 ```
 
 ### Build & Deploy
+
 ```bash
 npm run format:json         # Format compendium JSON files
 npm run build:packs         # Validate + compile packs to LevelDB
@@ -81,22 +86,22 @@ npm run build:all           # build:packs + build:copy
 
 **Location**: `.claude/docs/` - Deep-dive reference docs loaded on demand
 
-| Topic | File | When to Read |
-|-------|------|--------------|
-| **Getting Started** | [build-deploy.md](.claude/docs/build-deploy.md) | Setup, commands, deployment |
-| **Foundry API** | [foundry-api.md](.claude/docs/foundry-api.md) | TextEditor, ApplicationV2, sheets |
-| **Architecture** | [architecture.md](.claude/docs/architecture.md) | DataModels, helpers, init pattern |
-| **Combat** | [combat-system.md](.claude/docs/combat-system.md) | Combat flow, weapon qualities |
-| **Character** | [modifiers.md](.claude/docs/modifiers.md) | Modifiers, cybernetics, ranks |
-| **Squad System** | [cohesion-squad.md](.claude/docs/cohesion-squad.md) | Cohesion, Solo/Squad Mode |
-| **Mental State** | [insanity-corruption.md](.claude/docs/insanity-corruption.md) | IP/CP tracking, curses |
-| **Testing** | [testing.md](.claude/docs/testing.md) | Jest, TDD workflow, coverage |
-| **Code Quality** | [coding-standards.md](.claude/docs/coding-standards.md) | CSS, error handling, logging |
-| **Patterns** | [item-patterns.md](.claude/docs/item-patterns.md) | Item identification, key field |
-| **Data** | [compendium.md](.claude/docs/compendium.md) | Pack system, ID conventions |
-| **Infrastructure** | [foundry-adapter.md](.claude/docs/foundry-adapter.md) | FoundryAdapter, testability |
-| **Constants** | [constants.md](.claude/docs/constants.md) | Magic number elimination |
-| **Migrations** | [migration-system.md](.claude/docs/migration-system.md) | Data versioning, upgrades |
+| Topic               | File                                                          | When to Read                      |
+| ------------------- | ------------------------------------------------------------- | --------------------------------- |
+| **Getting Started** | [build-deploy.md](.claude/docs/build-deploy.md)               | Setup, commands, deployment       |
+| **Foundry API**     | [foundry-api.md](.claude/docs/foundry-api.md)                 | TextEditor, ApplicationV2, sheets |
+| **Architecture**    | [architecture.md](.claude/docs/architecture.md)               | DataModels, helpers, init pattern |
+| **Combat**          | [combat-system.md](.claude/docs/combat-system.md)             | Combat flow, weapon qualities     |
+| **Character**       | [modifiers.md](.claude/docs/modifiers.md)                     | Modifiers, cybernetics, ranks     |
+| **Squad System**    | [cohesion-squad.md](.claude/docs/cohesion-squad.md)           | Cohesion, Solo/Squad Mode         |
+| **Mental State**    | [insanity-corruption.md](.claude/docs/insanity-corruption.md) | IP/CP tracking, curses            |
+| **Testing**         | [testing.md](.claude/docs/testing.md)                         | Jest, TDD workflow, coverage      |
+| **Code Quality**    | [coding-standards.md](.claude/docs/coding-standards.md)       | CSS, error handling, logging      |
+| **Patterns**        | [item-patterns.md](.claude/docs/item-patterns.md)             | Item identification, key field    |
+| **Data**            | [compendium.md](.claude/docs/compendium.md)                   | Pack system, ID conventions       |
+| **Infrastructure**  | [foundry-adapter.md](.claude/docs/foundry-adapter.md)         | FoundryAdapter, testability       |
+| **Constants**       | [constants.md](.claude/docs/constants.md)                     | Magic number elimination          |
+| **Migrations**      | [migration-system.md](.claude/docs/migration-system.md)       | Data versioning, upgrades         |
 
 **See [.claude/docs/README.md](.claude/docs/README.md) for full documentation index.**
 
@@ -107,11 +112,13 @@ npm run build:all           # build:packs + build:copy
 **Location**: `.claude/memory/` (version controlled)
 
 This project uses Claude Code's persistent memory system to capture:
+
 - **Feedback** — Development preferences and lessons learned
 - **Project history** — Significant implementations and their context
 - **Reference** — Quick-lookup information
 
 **Key memories:**
+
 - [MEMORY.md](.claude/memory/MEMORY.md) — Memory index (start here)
 - [testing_standards.md](.claude/memory/testing_standards.md) — TDD workflow and test coverage goals
 - [feedback_code_quality.md](.claude/memory/feedback_code_quality.md) — Logger usage, import discipline
@@ -123,6 +130,7 @@ This project uses Claude Code's persistent memory system to capture:
 - [feedback_characteristic_damage_migration.md](.claude/memory/feedback_characteristic_damage_migration.md) — Use system.modifiers for characteristic penalties
 
 **When to update memory:**
+
 - Capture significant implementation patterns
 - Document lessons learned from debugging sessions
 - Record workflow preferences discovered during development
@@ -140,14 +148,17 @@ This project uses Claude Code's persistent memory system to capture:
 
 ```javascript
 // Check permissions first
-const canUpdate = game.user.isGM || actor.testUserPermission(game.user, "OWNER");
+const canUpdate =
+  game.user.isGM || actor.testUserPermission(game.user, "OWNER");
 
 if (!canUpdate) {
   // Route through socket - GM will execute with their permissions
-  game.socket.emit('system.deathwatch', {
-    type: 'actionType',
+  game.socket.emit("system.deathwatch", {
+    type: "actionType",
     actorId: actor.id,
-    data: { /* action data */ }
+    data: {
+      /* action data */
+    }
   });
   return;
 }
@@ -157,9 +168,10 @@ await actor.system.doSomething(data);
 ```
 
 **Socket handler (GM-only):**
+
 ```javascript
-game.socket.on('system.deathwatch', async (data) => {
-  if (data.type === 'actionType' && game.user.isGM) {
+game.socket.on("system.deathwatch", async (data) => {
+  if (data.type === "actionType" && game.user.isGM) {
     const actor = game.actors.get(data.actorId);
     await actor.system.doSomething(data.data);
   }
@@ -204,7 +216,7 @@ See `src/module/init/socket.mjs` for registered handlers.
 3. Verify all tests pass
 4. Refactor if needed
 
-**Expected results:** 121 test suites, 2129 passing tests (as of 2026-04-28)
+**Expected results:** 139 test suites, 2354 passing tests (as of 2026-05-20)
 
 **See [.claude/docs/testing.md](.claude/docs/testing.md) and [.claude/memory/testing_standards.md](.claude/memory/testing_standards.md) for complete testing documentation.**
 
@@ -221,12 +233,13 @@ When creating PRs, target the `main` branch.
 
 ## System Notes
 
-- **Foundry version**: Locked to Foundry v13
+- **Foundry version**: Supports v13 and v14 (tested on v14.x, uses v14 Region API for templates)
 - **Grid**: 3 meters per square (metric)
 - **Token bars**: Primary = Wounds, Secondary = Fatigue
 - **Initiative formula**: `1d10 + @agBonus + @initiativeBonus`
 - **Enemy auto-folder**: New Enemy/Horde actors auto-move to "Enemies" folder
 - **Skip Defeated**: Combat tracker defaults to skipping defeated combatants
+- **Measured Templates**: Drag from "Measured Templates" compendium to canvas. Templates are pre-configured for common weapons (flamers, grenades) and psychic powers. GM determines which tokens are hit.
 
 ---
 

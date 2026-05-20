@@ -179,6 +179,13 @@
       "path": "packs/macros",
       "type": "Macro",
       "system": "deathwatch"
+    },
+    {
+      "name": "measured-templates",
+      "label": "Measured Templates",
+      "path": "packs/measured-templates",
+      "type": "MeasuredTemplate",
+      "system": "deathwatch"
     }
   ],
   "initiative": "1d10 + @agBonus + @initiativeBonus",

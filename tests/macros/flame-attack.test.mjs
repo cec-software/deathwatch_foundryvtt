@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { flameAttack } from '../../src/module/macros/flame-attack.mjs';
+import { flameAttack, getRecentFlamerDamageRolls } from '../../src/module/macros/flame-attack.mjs';
 import * as CombatHelperModule from '../../src/module/helpers/combat/combat.mjs';
 import * as FireHelperModule from '../../src/module/helpers/combat/fire-helper.mjs';
 
@@ -29,16 +29,48 @@ describe('flameAttack', () => {
       user: {
         targets: {
           first: jest.fn(() => mockTargetToken)
-        }
+        },
+        isGM: false
       },
       settings: {
         get: jest.fn(() => 'roll')
+      },
+      messages: {
+        contents: []
+      },
+      actors: {
+        get: jest.fn((id) => {
+          const mockActors = {
+            'actor-gaius': { name: 'Brother Gaius' },
+            'actor-marcus': { name: 'Brother Marcus' }
+          };
+          return mockActors[id] || null;
+        })
+      },
+      scenes: {
+        get: jest.fn((sceneId) => {
+          if (sceneId === 'scene1') {
+            return {
+              tokens: {
+                get: jest.fn((tokenId) => {
+                  if (tokenId === 'token1') return { actor: mockTargetActor, object: mockTargetToken };
+                  if (tokenId === 'token2') return { actor: mockTargetActor, object: mockTargetToken };
+                  return null;
+                })
+              }
+            };
+          }
+          return null;
+        })
+      },
+      socket: {
+        emit: jest.fn()
       }
     };
 
     global.canvas = {
       tokens: {
-        controlled: [],
+        controlled: [mockTargetToken],
         get: jest.fn(() => null)
       }
     };
@@ -99,7 +131,8 @@ describe('flameAttack', () => {
     };
     global.ui = {
       notifications: {
-        warn: jest.fn()
+        warn: jest.fn(),
+        info: jest.fn()
       }
     };
     global.foundry = {
@@ -172,8 +205,8 @@ describe('flameAttack', () => {
       expect(global.ui.notifications.warn).toHaveBeenCalledWith('Enter a damage formula.');
     });
 
-    it('warns when no target selected', async () => {
-      global.game.user.targets.first = jest.fn(() => null);
+    it('warns when no token selected', async () => {
+      global.canvas.tokens.controlled = [];
 
       const waitMock = jest.fn(async (config) => {
         const burnButton = config.buttons.find(b => b.action === 'burn');
@@ -183,21 +216,75 @@ describe('flameAttack', () => {
 
       await flameAttack();
 
-      expect(global.ui.notifications.warn).toHaveBeenCalledWith('Target a token before clicking Burn.');
+      expect(global.ui.notifications.warn).toHaveBeenCalledWith('Select at least one token before clicking Burn.');
     });
 
-    it('warns when target has no actor', async () => {
-      global.game.user.targets.first = jest.fn(() => ({ actor: null }));
+    it('processes multiple selected tokens', async () => {
+      const mockToken2 = {
+        actor: {
+          id: 'actor2',
+          name: 'Target 2',
+          type: 'enemy',
+          system: { characteristics: { ag: { value: 40 } } }
+        },
+        id: 'token2',
+        scene: { id: 'scene1' }
+      };
 
+      mockTargetToken.id = 'token1';
+      mockTargetToken.scene = { id: 'scene1' };
+
+      global.canvas.tokens.controlled = [mockTargetToken, mockToken2];
+      global.game.user.isGM = false; // Use socket path to avoid nested dialog complexity
+
+      let burnCallback;
       const waitMock = jest.fn(async (config) => {
         const burnButton = config.buttons.find(b => b.action === 'burn');
-        await burnButton.callback({}, {}, mockDialog);
+        if (burnButton && !burnCallback) {
+          // Capture callback for first (main) dialog only
+          burnCallback = burnButton.callback;
+        }
       });
       global.foundry.applications.api.DialogV2.wait = waitMock;
 
       await flameAttack();
 
-      expect(global.ui.notifications.warn).toHaveBeenCalledWith('Target a token before clicking Burn.');
+      // Manually trigger burn callback to test multi-token iteration
+      if (burnCallback) {
+        await burnCallback({}, {}, mockDialog);
+      }
+
+      // Should emit socket for both targets and show notification
+      expect(global.game.socket.emit).toHaveBeenCalledTimes(2);
+      expect(global.ui.notifications.info).toHaveBeenCalledWith('Flame attack processed for 2 target(s).');
+    });
+
+    it('skips tokens with no actor during multi-token processing', async () => {
+      const tokenNoActor = { actor: null, id: 'token-invalid' };
+      mockTargetToken.id = 'token1';
+      mockTargetToken.scene = { id: 'scene1' };
+
+      global.canvas.tokens.controlled = [mockTargetToken, tokenNoActor];
+      global.game.user.isGM = false;
+
+      let burnCallback;
+      const waitMock = jest.fn(async (config) => {
+        const burnButton = config.buttons.find(b => b.action === 'burn');
+        if (burnButton && !burnCallback) {
+          burnCallback = burnButton.callback;
+        }
+      });
+      global.foundry.applications.api.DialogV2.wait = waitMock;
+
+      await flameAttack();
+
+      if (burnCallback) {
+        await burnCallback({}, {}, mockDialog);
+      }
+
+      // Should emit socket only for valid token (skips null actor)
+      expect(global.game.socket.emit).toHaveBeenCalledTimes(1);
+      expect(global.ui.notifications.info).toHaveBeenCalledWith('Flame attack processed for 2 target(s).');
     });
   });
 
@@ -231,4 +318,228 @@ describe('flameAttack', () => {
     });
   });
 
+  describe('damage source dropdown', () => {
+    it('includes damage source dropdown in dialog', async () => {
+      const waitMock = jest.fn().mockResolvedValue(null);
+      global.foundry.applications.api.DialogV2.wait = waitMock;
+
+      await flameAttack();
+
+      const config = waitMock.mock.calls[0][0];
+      expect(config.content).toContain('damageSource');
+      expect(config.content).toContain('Select Recent Damage Source');
+    });
+
+    it('populates dropdown with recent flamer damage rolls', async () => {
+      global.game.messages = {
+        contents: [
+          {
+            content: '<div data-flamer-damage="1d10+4" data-flamer-pen="6" data-flamer-type="Energy" data-actor-id="actor-gaius">Flame hit</div>'
+          },
+          {
+            content: '<div data-flamer-damage="1d10+8" data-flamer-pen="10" data-flamer-type="Energy" data-actor-id="actor-marcus">Flame hit</div>'
+          }
+        ]
+      };
+
+      // Mock DOMParser
+      global.DOMParser = class DOMParser {
+        parseFromString(html, mimeType) {
+          return {
+            querySelector: jest.fn((selector) => {
+              if (html.includes('data-flamer-damage')) {
+                const damageMatch = html.match(/data-flamer-damage="([^"]+)"/);
+                const penMatch = html.match(/data-flamer-pen="([^"]+)"/);
+                const typeMatch = html.match(/data-flamer-type="([^"]+)"/);
+                const actorIdMatch = html.match(/data-actor-id="([^"]+)"/);
+
+                return {
+                  dataset: {
+                    flamerDamage: damageMatch?.[1] || '',
+                    flamerPen: penMatch?.[1] || '',
+                    flamerType: typeMatch?.[1] || '',
+                    actorId: actorIdMatch?.[1] || ''
+                  }
+                };
+              }
+              return null;
+            })
+          };
+        }
+      };
+
+      const waitMock = jest.fn().mockResolvedValue(null);
+      global.foundry.applications.api.DialogV2.wait = waitMock;
+
+      await flameAttack();
+
+      const config = waitMock.mock.calls[0][0];
+      expect(config.content).toContain('Brother Marcus');
+      expect(config.content).toContain('Brother Gaius');
+      expect(config.content).toContain('1d10+8');
+      expect(config.content).toContain('1d10+4');
+    });
+
+    it('pre-fills damage fields with most recent roll', async () => {
+      global.game.messages = {
+        contents: [
+          {
+            content: '<div data-flamer-damage="1d10+8" data-flamer-pen="10" data-flamer-type="Energy" data-actor-id="actor-marcus">Flame hit</div>'
+          }
+        ]
+      };
+
+      global.DOMParser = class DOMParser {
+        parseFromString(html, mimeType) {
+          return {
+            querySelector: jest.fn((selector) => {
+              if (html.includes('data-flamer-damage')) {
+                return {
+                  dataset: {
+                    flamerDamage: '1d10+8',
+                    flamerPen: '10',
+                    flamerType: 'Energy',
+                    actorId: 'actor-marcus'
+                  }
+                };
+              }
+              return null;
+            })
+          };
+        }
+      };
+
+      const waitMock = jest.fn().mockResolvedValue(null);
+      global.foundry.applications.api.DialogV2.wait = waitMock;
+
+      await flameAttack();
+
+      const config = waitMock.mock.calls[0][0];
+      // Check that default values are set in the HTML
+      expect(config.content).toContain('value="1d10+8"');
+      expect(config.content).toContain('value="10"');
+      expect(config.content).toContain('value="Energy"');
+    });
+
+    it('leaves fields empty when no recent rolls found', async () => {
+      global.game.messages = {
+        contents: []
+      };
+
+      const waitMock = jest.fn().mockResolvedValue(null);
+      global.foundry.applications.api.DialogV2.wait = waitMock;
+
+      await flameAttack();
+
+      const config = waitMock.mock.calls[0][0];
+      // Should have empty default values
+      expect(config.content).toContain('value=""');
+    });
+  });
+
+});
+
+describe('getRecentFlamerDamageRolls', () => {
+  beforeEach(() => {
+    // Mock game.messages collection and actors
+    global.game = {
+      messages: {
+        contents: []
+      },
+      actors: {
+        get: jest.fn((id) => {
+          const mockActors = {
+            'actor-gaius': { name: 'Brother Gaius' },
+            'actor-marcus': { name: 'Brother Marcus' }
+          };
+          return mockActors[id] || null;
+        })
+      }
+    };
+
+    // Mock DOMParser
+    global.DOMParser = class DOMParser {
+      parseFromString(html, mimeType) {
+        // Simple mock - return object with querySelector
+        return {
+          querySelector: jest.fn((selector) => {
+            if (html.includes(selector.replace(/[\[\]]/g, ''))) {
+              // Extract data attributes from the HTML string
+              const match = html.match(/data-flamer-damage="([^"]+)"/);
+              const damageMatch = html.match(/data-flamer-damage="([^"]+)"/);
+              const penMatch = html.match(/data-flamer-pen="([^"]+)"/);
+              const typeMatch = html.match(/data-flamer-type="([^"]+)"/);
+              const actorIdMatch = html.match(/data-actor-id="([^"]+)"/);
+
+              if (match) {
+                return {
+                  dataset: {
+                    flamerDamage: damageMatch?.[1] || '',
+                    flamerPen: penMatch?.[1] || '',
+                    flamerType: typeMatch?.[1] || '',
+                    actorId: actorIdMatch?.[1] || ''
+                  }
+                };
+              }
+            }
+            return null;
+          })
+        };
+      }
+    };
+  });
+
+  it('returns empty array when no flamer damage messages found', () => {
+    global.game.messages.contents = [
+      { content: '<div>Regular message</div>' },
+      { content: '<div>Another message</div>' }
+    ];
+
+    const result = getRecentFlamerDamageRolls();
+
+    expect(result).toEqual([]);
+  });
+
+  it('parses flamer damage messages correctly', () => {
+    global.game.messages.contents = [
+      {
+        content: '<div data-flamer-damage="1d10+4" data-flamer-pen="6" data-flamer-type="Energy" data-actor-id="actor-gaius">Flame hit</div>'
+      },
+      {
+        content: '<div data-flamer-damage="1d10+8" data-flamer-pen="10" data-flamer-type="Energy" data-actor-id="actor-marcus">Flame hit</div>'
+      }
+    ];
+
+    const result = getRecentFlamerDamageRolls();
+
+    expect(result).toEqual([
+      { damage: '1d10+8', pen: 10, damageType: 'Energy', attackerName: 'Brother Marcus' },
+      { damage: '1d10+4', pen: 6, damageType: 'Energy', attackerName: 'Brother Gaius' }
+    ]);
+  });
+
+  it('limits results to most recent 20 messages', () => {
+    // Add mock actors for this test
+    const mockActors = {};
+    for (let i = 0; i < 30; i++) {
+      mockActors[`actor-${i}`] = { name: `Brother ${i}` };
+    }
+    global.game.actors.get = jest.fn((id) => mockActors[id] || null);
+
+    const messages = [];
+    for (let i = 0; i < 30; i++) {
+      messages.push({
+        content: `<div data-flamer-damage="1d10+${i}" data-flamer-pen="${i}" data-flamer-type="Energy" data-actor-id="actor-${i}">Flame ${i}</div>`
+      });
+    }
+    global.game.messages.contents = messages;
+
+    const result = getRecentFlamerDamageRolls();
+
+    // Should only get last 20
+    expect(result.length).toBe(20);
+    // Most recent should be last message (index 29), reverse order
+    expect(result[0].damage).toBe('1d10+29');
+    expect(result[19].damage).toBe('1d10+10');
+  });
 });

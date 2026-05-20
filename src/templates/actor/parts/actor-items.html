@@ -59,7 +59,7 @@
                 <a class="item-control weapon-unjam-btn" data-action="weaponUnjam" data-item-id="{{item._id}}" title="Clear Jam" style="color: red;"><i class="fas fa-wrench"></i> Unjam</a>
                 {{else}}
                 <a class="item-control weapon-attack-btn" data-action="weaponAttack" data-item-id="{{item._id}}" title="Attack"><i class="fas fa-crosshairs"></i></a>
-                <a class="item-control weapon-damage-btn" data-action="weaponDamage" data-item-id="{{item._id}}" title="Damage"><i class="fas fa-dice-d20"></i></a>
+                <a class="item-control weapon-damage-btn{{#if item.system.weapon.hasFlame}} disabled{{/if}}" data-action="weaponDamage" data-item-id="{{item._id}}" title="{{#if item.system.weapon.hasFlame}}Use Attack button, then run Flame Attack macro{{else}}Damage{{/if}}" {{#if item.system.weapon.hasFlame}}disabled{{/if}}><i class="fas fa-dice-d20"></i></a>
                 {{/if}}
               </div>
               {{/if}}
