@@ -159,4 +159,45 @@ export class AnimationHelper {
       console.warn("[Deathwatch] Animation playback error:", error);
     }
   }
+
+  /**
+   * Play multi-stage grenade throw animation.
+   * Blocks until animation completes.
+   * Uses fixed JB2A asset paths (bomb throw=black, shrapnel=black, explosion=orange, ground crack=orange).
+   * @param {Token} sourceToken - Source token (thrower)
+   * @param {{x: number, y: number}} targetLocation - Impact location in pixel coordinates
+   * @param {Object} weapon - Weapon item
+   * @returns {Promise<void>}
+   */
+  static async playGrenadeAnimation(sourceToken, targetLocation, weapon) {
+    try {
+      const sequence = new Sequence();
+      sequence
+        .effect()
+          .file('jb2a.throwable.throw.bomb.01.black')
+          .atLocation(sourceToken)
+          .stretchTo(targetLocation)
+          .waitUntilFinished(-150)
+        .effect()
+          .file('jb2a.explosion.shrapnel.bomb.01.black')
+          .atLocation(targetLocation)
+          .scaleToObject(1.2)
+          .waitUntilFinished(-100)
+        .effect()
+          .file('jb2a.explosion.08.orange')
+          .atLocation(targetLocation)
+          .waitUntilFinished()
+        .effect()
+          .file('jb2a.impact.ground_crack.orange')
+          .atLocation(targetLocation)
+          .belowTokens()
+          .scaleToObject(2)
+          .scaleIn(0.1, 100, {ease: "easeOutExpo"})
+          .duration(5000)
+          .fadeOut(3250, {ease: "easeInSine"});
+      await sequence.play();
+    } catch (error) {
+      console.warn("[Deathwatch] Grenade animation playback error:", error);
+    }
+  }
 }

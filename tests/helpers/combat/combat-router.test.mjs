@@ -86,6 +86,81 @@ describe('CombatRouter', () => {
       await expect(CombatRouter.executeAttack(mockActor, mockTalent))
         .rejects.toThrow('Item type "talent" does not support attacks');
     });
+
+    it('should route thrown weapon to GrenadeHelper.executeGrenadeThrow', async () => {
+      const thrownWeapon = {
+        id: 'grenade-123',
+        name: 'Frag Grenade',
+        type: 'weapon',
+        system: {
+          class: 'Thrown',
+          dmg: '2d10+2'
+        }
+      };
+
+      const mockGrenadeHelper = {
+        executeGrenadeThrow: jest.fn().mockResolvedValue(undefined)
+      };
+
+      CombatRouter._setMocks({
+        CombatHelper: mockCombatHelper,
+        PsychicCombatHelper: mockPsychicCombatHelper,
+        flameAttack: mockFlameAttack,
+        WeaponQualityHelper: mockWeaponQualityHelper,
+        GrenadeHelper: mockGrenadeHelper
+      });
+
+      await CombatRouter.executeAttack(mockActor, thrownWeapon);
+
+      expect(mockGrenadeHelper.executeGrenadeThrow).toHaveBeenCalledWith(mockActor, thrownWeapon);
+      expect(mockCombatHelper.weaponAttackDialog).not.toHaveBeenCalled();
+    });
+
+    it('should check flame quality before thrown class', async () => {
+      const flameThrownWeapon = {
+        id: 'weapon-456',
+        name: 'Flame Grenade',
+        type: 'weapon',
+        system: {
+          class: 'Thrown',
+          dmg: '1d10+4'
+        }
+      };
+
+      mockWeaponQualityHelper.hasQuality.mockResolvedValue(true);
+
+      await CombatRouter.executeAttack(mockActor, flameThrownWeapon);
+
+      expect(mockCombatHelper.weaponDamageRoll).toHaveBeenCalled();
+    });
+
+    it('should handle case-insensitive thrown class detection', async () => {
+      const thrownWeapon = {
+        id: 'grenade-789',
+        name: 'Krak Grenade',
+        type: 'weapon',
+        system: {
+          class: 'THROWN',
+          dmg: '3d10+4'
+        }
+      };
+
+      const mockGrenadeHelper = {
+        executeGrenadeThrow: jest.fn().mockResolvedValue(undefined)
+      };
+
+      CombatRouter._setMocks({
+        CombatHelper: mockCombatHelper,
+        PsychicCombatHelper: mockPsychicCombatHelper,
+        flameAttack: mockFlameAttack,
+        WeaponQualityHelper: mockWeaponQualityHelper,
+        GrenadeHelper: mockGrenadeHelper
+      });
+
+      await CombatRouter.executeAttack(mockActor, thrownWeapon);
+
+      expect(mockGrenadeHelper.executeGrenadeThrow).toHaveBeenCalledWith(mockActor, thrownWeapon);
+    });
   });
 
   describe('executeDamage', () => {

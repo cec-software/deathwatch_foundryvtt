@@ -14,10 +14,7 @@
     }
   ],
   "esmodules": ["module/deathwatch.mjs"],
-  "styles": [
-    "styles/deathwatch.css",
-    "css/token-action-hud.css"
-  ],
+  "styles": ["styles/deathwatch.css", "css/token-action-hud.css"],
   "documentTypes": {
     "Actor": {
       "character": {},
@@ -178,13 +175,6 @@
       "label": "Macros",
       "path": "packs/macros",
       "type": "Macro",
-      "system": "deathwatch"
-    },
-    {
-      "name": "measured-templates",
-      "label": "Measured Templates",
-      "path": "packs/measured-templates",
-      "type": "MeasuredTemplate",
       "system": "deathwatch"
     }
   ],

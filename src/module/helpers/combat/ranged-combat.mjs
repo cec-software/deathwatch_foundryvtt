@@ -157,6 +157,39 @@ export class RangedCombatHelper {
   }
 
   /**
+   * Convert scatter direction and distance to pixel offset.
+   * @param {string} direction - Direction name from scatter table ("Upper Left", "Right", etc.)
+   * @param {number} distanceMeters - Scatter distance in meters
+   * @param {Object} grid - Grid parameters for testability
+   * @param {number} grid.gridDistance - Meters per grid square (default 3)
+   * @param {number} grid.gridSize - Pixels per grid square (default 100)
+   * @returns {{dx: number, dy: number}} Pixel offset to add to target coordinates
+   */
+  static scatterToPixelOffset(direction, distanceMeters, { gridDistance = 3, gridSize = 100 } = {}) {
+    const DIRECTION_ANGLES = {
+      "Upper Left": 225,
+      "Up": 270,
+      "Upper Right": 315,
+      "Left": 180,
+      "Right": 0,
+      "Lower Left": 135,
+      "Down": 90,
+      "Lower Right": 45
+    };
+
+    const angleDeg = DIRECTION_ANGLES[direction];
+    if (angleDeg === undefined) return { dx: 0, dy: 0 };
+
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const pixelDistance = (distanceMeters / gridDistance) * gridSize;
+
+    return {
+      dx: Math.cos(angleRad) * pixelDistance,
+      dy: Math.sin(angleRad) * pixelDistance
+    };
+  }
+
+  /**
    * Calculate effective range for thrown weapons based on Strength Bonus.
    *
    * Thrown weapons (grenades, knives, etc.) have range = SB × multiplier.
@@ -443,7 +476,8 @@ export class RangedCombatHelper {
    * @param {string} [options.calledShot] - Preset called shot location
    * @param {number} [options.miscModifier] - Preset misc modifier
    * @param {boolean} [options.skipDialog] - If true, skip dialog and roll immediately
-   * @returns {Promise<void>} Resolves when attack is complete
+   * @param {Object} [options.targetLocation] - Target pixel coordinates {x, y} for range calculation (used by grenade flow)
+   * @returns {Promise<Object|null>} The attack result object, or null if cancelled/no attack
    * @example
    * // Standard attack with dialog
    * await RangedCombatHelper.attackDialog(actor, boltgun);
@@ -475,17 +509,17 @@ export class RangedCombatHelper {
     const agBonus = actor.system.characteristics?.ag?.mod || 0;
 
     const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-    const targetToken = game.user.targets.first();
-    
-    if (!targetToken) {
+    const targetToken = options.targetLocation ? null : game.user.targets.first();
+
+    if (!options.targetLocation && !targetToken) {
       ui.notifications.warn("No target selected. Please target a token before attacking.");
     }
-    
+
     let autoRangeMod = 0;
     let rangeLabel = "Unknown";
     let distanceText = "";
-    
-    if (attackerToken && targetToken) {
+
+    if (attackerToken && (targetToken || options.targetLocation)) {
       let weaponRange = 0;
       if (weapon.system.class?.toLowerCase() === 'thrown') {
         const thrownRange = this.calculateThrownWeaponRange(weapon, actor);
@@ -494,9 +528,18 @@ export class RangedCombatHelper {
       else {
         weaponRange = parseInt(weapon.system.effectiveRange || weapon.system.range) || 0;
       }
-      
+
       if (weaponRange > 0) {
-        const distance = CombatHelper.getTokenDistance(attackerToken, targetToken);
+        let distance;
+        if (options.targetLocation) {
+          const pixelDistance = Math.hypot(
+            options.targetLocation.x - attackerToken.center.x,
+            options.targetLocation.y - attackerToken.center.y
+          );
+          distance = pixelDistance / (canvas.grid.size / canvas.grid.distance);
+        } else {
+          distance = CombatHelper.getTokenDistance(attackerToken, targetToken);
+        }
         if (distance !== null) {
           const rangeInfo = CombatHelper.calculateRangeModifier(distance, weaponRange);
           autoRangeMod = rangeInfo.modifier;
@@ -574,7 +617,8 @@ export class RangedCombatHelper {
       </div>
     `;
 
-    foundry.applications.api.DialogV2.wait({
+    let attackResult = null;
+    await foundry.applications.api.DialogV2.wait({
       window: { title: `Ranged Attack: ${safeWeaponName}` },
       position: { width: 325 },
       content: content,
@@ -796,6 +840,9 @@ export class RangedCombatHelper {
             CombatHelper.lastAttackDistance = attackerToken && targetToken ? CombatHelper.getTokenDistance(attackerToken, targetToken) : null;
             CombatHelper.lastCalledShotLocation = (calledShot !== 0 && hitsTotal > 0) ? el.querySelector('#calledShotLocation').value : null;
 
+            // Store result for caller (grenade flow needs hit/miss)
+            attackResult = result;
+
             // Post chat message with data attributes for Automated Animations module
             const label = CombatDialogHelper.buildAttackLabel(weapon.name, targetNumber, hitsTotal, isJammed || hasPrematureDetonation, isOverheated);
             const flavor = CombatDialogHelper.buildAttackFlavor(label, modifierParts, hitsParts);
@@ -851,6 +898,7 @@ export class RangedCombatHelper {
         { label: "Cancel", action: "cancel" }
       ]
     });
+    return attackResult;
   }
 
   /**

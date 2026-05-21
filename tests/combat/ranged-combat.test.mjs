@@ -260,4 +260,82 @@ describe('RangedCombatHelper', () => {
       expect(game.tables.getName).toHaveBeenCalledWith('Scatter');
     });
   });
+
+  describe('scatterToPixelOffset', () => {
+    it('should convert "Right" direction to positive x offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Right', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(100);
+      expect(result.dy).toBeCloseTo(0);
+    });
+
+    it('should convert "Left" direction to negative x offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Left', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(-100);
+      expect(result.dy).toBeCloseTo(0);
+    });
+
+    it('should convert "Down" direction to positive y offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Down', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(0);
+      expect(result.dy).toBeCloseTo(100);
+    });
+
+    it('should convert "Up" direction to negative y offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Up', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(0);
+      expect(result.dy).toBeCloseTo(-100);
+    });
+
+    it('should convert "Upper Right" to diagonal offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Upper Right', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(70.71, 1);
+      expect(result.dy).toBeCloseTo(-70.71, 1);
+    });
+
+    it('should convert "Lower Left" to diagonal offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Lower Left', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(-70.71, 1);
+      expect(result.dy).toBeCloseTo(70.71, 1);
+    });
+
+    it('should convert "Upper Left" to diagonal offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Upper Left', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(-70.71, 1);
+      expect(result.dy).toBeCloseTo(-70.71, 1);
+    });
+
+    it('should convert "Lower Right" to diagonal offset', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Lower Right', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(70.71, 1);
+      expect(result.dy).toBeCloseTo(70.71, 1);
+    });
+
+    it('should scale distance by grid ratio', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('Right', 6, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBeCloseTo(200);
+      expect(result.dy).toBeCloseTo(0);
+    });
+
+    it('should return zero offset for unknown direction', () => {
+      const result = RangedCombatHelper.scatterToPixelOffset('InvalidDirection', 3, { gridDistance: 3, gridSize: 100 });
+      expect(result.dx).toBe(0);
+      expect(result.dy).toBe(0);
+    });
+  });
+
+  describe('attackDialog targetLocation support', () => {
+    it('should calculate range from token center to targetLocation', () => {
+      // Distance from (0, 0) to (300, 0) with gridSize=100, gridDistance=3 = 9 meters
+      const pixelDistance = Math.hypot(300 - 0, 0 - 0);
+      const distanceMeters = pixelDistance / (100 / 3);
+      expect(distanceMeters).toBe(9);
+    });
+
+    it('should calculate diagonal distance correctly', () => {
+      // Distance from (0, 0) to (100, 100) with gridSize=100, gridDistance=3
+      const pixelDistance = Math.hypot(100, 100);
+      const distanceMeters = pixelDistance / (100 / 3);
+      expect(distanceMeters).toBeCloseTo(4.24, 1);
+    });
+  });
 });

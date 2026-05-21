@@ -1,4 +1,5 @@
 import { CombatHelper } from './combat.mjs';
+import { GrenadeHelper } from './grenade-helper.mjs';
 import { PsychicCombatHelper } from './psychic-combat.mjs';
 import { WeaponQualityHelper } from './weapon-quality-helper.mjs';
 
@@ -30,6 +31,7 @@ export class CombatRouter {
 
     switch (name) {
       case 'CombatHelper': return CombatHelper;
+      case 'GrenadeHelper': return GrenadeHelper;
       case 'PsychicCombatHelper': return PsychicCombatHelper;
       case 'WeaponQualityHelper': return WeaponQualityHelper;
       default: throw new Error(`Unknown helper: ${name}`);
@@ -63,6 +65,12 @@ export class CombatRouter {
           // Flamers skip attack roll, go straight to damage output
           const CombatHelper = this._getHelper('CombatHelper');
           return await CombatHelper.weaponDamageRoll(actor, item, { isFlamerAttack: true });
+        }
+
+        // Check for thrown weapon (grenades)
+        if (item.system.class?.toLowerCase() === 'thrown') {
+          const GrenadeHelper = this._getHelper('GrenadeHelper');
+          return await GrenadeHelper.executeGrenadeThrow(actor, item);
         }
 
         // Standard weapon attack dialog
