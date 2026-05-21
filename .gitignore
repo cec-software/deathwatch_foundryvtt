@@ -3,3 +3,4 @@ src/packs
 coverage/
 .env
 .claude/settings.local.json
+docs/superpowers

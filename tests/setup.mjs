@@ -15,6 +15,7 @@ global.game = {
   },
   settings: {
     register: jest.fn(),
+    registerMenu: jest.fn(),
     get: jest.fn(),
     set: jest.fn()
   },

@@ -290,3 +290,21 @@
     inset 0 2px 4px rgba(0, 0, 0, 0.4),
     0 1px 2px rgba(0, 0, 0, 0.6) !important;
 }
+
+/* Apply Damage button visibility control */
+.apply-damage-btn {
+  display: none;
+}
+
+.apply-damage-btn[data-can-apply="true"] {
+  display: inline-block;
+}
+
+/* Roll Critical button visibility control */
+.roll-critical-btn {
+  display: none;
+}
+
+.roll-critical-btn[data-can-apply="true"] {
+  display: inline-block;
+}

@@ -7,7 +7,6 @@ import { Logger } from '../helpers/logger.mjs';
 import { initializeSystemManager, SystemManager } from './system-manager.mjs';
 import { initializeActionHandler, ActionHandler } from './action-handler.mjs';
 import { initializeRollHandler, RollHandler } from './roll-handler.mjs';
-import { TAHSkillSelector, DEFAULT_TAH_SKILLS } from './skill-selector.mjs';
 
 const logger = Logger.category('TAH.INIT');
 
@@ -39,45 +38,6 @@ if (typeof Hooks !== 'undefined') {
     logger.error('Failed to register with TAH Core:', error);
   }
   });
-}
-
-/**
- * Register Token Action HUD settings
- */
-export function registerSettings() {
-  try {
-    game.settings.register('deathwatch', 'enableTokenActionHUD', {
-      name: 'DEATHWATCH.Settings.EnableTokenActionHUD.Name',
-      hint: 'DEATHWATCH.Settings.EnableTokenActionHUD.Hint',
-      scope: 'world',
-      config: true,
-      type: Boolean,
-      default: false,
-      requiresReload: true
-    });
-
-    // Skill selection list (per-client setting)
-    game.settings.register('deathwatch', 'tahSkillList', {
-      scope: 'client',
-      config: false,
-      type: Array,
-      default: DEFAULT_TAH_SKILLS
-    });
-
-    // Skill selection menu
-    game.settings.registerMenu('deathwatch', 'tahSkillSelector', {
-      name: 'Select TAH Skills',
-      label: 'Skill Selection',
-      hint: 'Choose which skills appear in your Token Action HUD (to avoid clutter)',
-      icon: 'fas fa-brain',
-      type: TAHSkillSelector,
-      restricted: false
-    });
-
-    logger.debug('Token Action HUD settings registered');
-  } catch (error) {
-    logger.warn('Failed to register Token Action HUD settings:', error);
-  }
 }
 
 /**
