@@ -1,7 +1,7 @@
 import { ErrorHandler } from '../../../helpers/error-handler.mjs';
 import { Validation } from '../../../helpers/validation.mjs';
 import { ChatMessageBuilder } from '../../../helpers/ui/chat-message-builder.mjs';
-import { PsychicCombatHelper } from '../../../helpers/combat/psychic-combat.mjs';
+import { CombatRouter } from '../../../helpers/combat/combat-router.mjs';
 import { ModeHelper } from '../../../helpers/mode-helper.mjs';
 import { CohesionPanel } from '../../../ui/cohesion-panel.mjs';
 
@@ -130,7 +130,7 @@ export class ItemDisplayHandlers {
       const li = $(ev.currentTarget).closest('.item');
       const itemId = li.data('itemId');
       const power = Validation.requireDocument(actor.items.get(itemId), 'Psychic Power', 'Use Power');
-      await PsychicCombatHelper.focusPowerDialog(actor, power);
+      await CombatRouter.executeDamage(actor, power);
     }, 'Use Psychic Power'));
 
     // Activate Squad Mode ability

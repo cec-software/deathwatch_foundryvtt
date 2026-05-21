@@ -1,10 +1,11 @@
 import { jest } from '@jest/globals';
 import { handleTAHSocketAction } from '../../src/module/init/socket.mjs';
+import { CombatRouter } from '../../src/module/helpers/combat/combat-router.mjs';
 import { CombatHelper } from '../../src/module/helpers/combat/combat.mjs';
 import { RollExecutor } from '../../src/module/helpers/roll-executor.mjs';
 
 describe('TAH Socket Handler', () => {
-  let weaponAttackSpy;
+  let executeAttackSpy;
   let clearJamSpy;
   let showSkillDialogSpy;
   let showCharacteristicDialogSpy;
@@ -19,7 +20,7 @@ describe('TAH Socket Handler', () => {
     };
 
     // Spy on helper methods
-    weaponAttackSpy = jest.spyOn(CombatHelper, 'weaponAttackDialog').mockResolvedValue();
+    executeAttackSpy = jest.spyOn(CombatRouter, 'executeAttack').mockResolvedValue();
     clearJamSpy = jest.spyOn(CombatHelper, 'clearJam').mockResolvedValue();
     showSkillDialogSpy = jest.spyOn(RollExecutor, 'showSkillDialog').mockResolvedValue();
     showCharacteristicDialogSpy = jest.spyOn(RollExecutor, 'showCharacteristicDialog').mockResolvedValue();
@@ -41,7 +42,7 @@ describe('TAH Socket Handler', () => {
     });
 
     it('should handle weapon attack action', async () => {
-      const mockWeapon = { id: 'weapon123', name: 'Bolter', type: 'rangedWeapon' };
+      const mockWeapon = { id: 'weapon123', name: 'Bolter', type: 'weapon' };
       const mockActor = {
         id: 'actor123',
         name: 'Test Actor',
@@ -56,7 +57,7 @@ describe('TAH Socket Handler', () => {
 
       expect(global.game.actors.get).toHaveBeenCalledWith('actor123');
       expect(mockActor.items.get).toHaveBeenCalledWith('weapon123');
-      expect(weaponAttackSpy).toHaveBeenCalledWith(mockActor, mockWeapon);
+      expect(executeAttackSpy).toHaveBeenCalledWith(mockActor, mockWeapon);
     });
 
     it('should handle skill test action', async () => {

@@ -409,6 +409,19 @@
   box-shadow: 0 0 8px red;
 }
 
+/* Disabled damage button for flame weapons */
+.deathwatch .weapon-damage-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #666;
+  pointer-events: none;
+}
+
+.deathwatch .weapon-damage-btn.disabled:hover {
+  background-color: #666;
+  opacity: 0.5;
+}
+
 /* Armor Effects Table */
 .armor-effects-table {
   width: 100%;

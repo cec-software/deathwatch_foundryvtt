@@ -14,16 +14,16 @@ describe('Token Action HUD Initialization', () => {
 
   describe('registerSettings', () => {
     it('should register enableTokenActionHUD setting', async () => {
-      const { registerSettings } = await import('../../src/module/token-action-hud/init.mjs');
+      const { SettingsRegistrar } = await import('../../src/module/init/settings.mjs');
 
-      registerSettings();
+      SettingsRegistrar.register();
 
       expect(game.settings.register).toHaveBeenCalledWith(
         'deathwatch',
         'enableTokenActionHUD',
         expect.objectContaining({
-          name: 'DEATHWATCH.Settings.EnableTokenActionHUD.Name',
-          hint: 'DEATHWATCH.Settings.EnableTokenActionHUD.Hint',
+          name: 'Enable Token Action HUD',
+          hint: 'Enable Token Action HUD integration. Requires Token Action HUD Core module to be active. Changes require reload.',
           scope: 'world',
           config: true,
           type: Boolean,
@@ -35,9 +35,9 @@ describe('Token Action HUD Initialization', () => {
     it('should not throw if TAH Core is not active', async () => {
       game.modules.get = jest.fn().mockReturnValue(undefined);
 
-      const { registerSettings } = await import('../../src/module/token-action-hud/init.mjs');
+      const { SettingsRegistrar } = await import('../../src/module/init/settings.mjs');
 
-      expect(() => registerSettings()).not.toThrow();
+      expect(() => SettingsRegistrar.register()).not.toThrow();
     });
   });
 

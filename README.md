@@ -2,9 +2,9 @@
 
 A complete game system implementation for [Foundry Virtual Tabletop](https://foundryvtt.com/) that brings the Warhammer 40,000: Deathwatch tabletop RPG to the digital table. Manage Space Marine Kill-Teams, automate complex combat mechanics, and run campaigns in the Jericho Reach and beyond.
 
-![Foundry v13](https://img.shields.io/badge/Foundry-v13-informational)
+![Foundry v13-v14](https://img.shields.io/badge/Foundry-v13--v14-informational)
 ![Version](https://img.shields.io/badge/Version-0.0.2-blue)
-![Tests](https://img.shields.io/badge/Tests-1823%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-2354%20passing-brightgreen)
 
 ---
 
@@ -40,7 +40,14 @@ A complete game system implementation for [Foundry Virtual Tabletop](https://fou
 - **24+ Weapon Qualities**: Accurate, Tearing, Melta, Primitive, Force, Power Field, Twin-Linked, Storm, and more — all automated
 - **Weapon Upgrades**: Attachable modifications (Red-Dot Laser Sight, Telescopic Sight, etc.)
 - **Ammunition Modifiers**: Special ammo types that modify weapon damage, rate of fire, blast radius, and more
-- **Flame Weapons**: Automatic routing for flame-quality weapons with cone-based targeting and On Fire status
+- **Flame Weapons & Powers**: Automatic routing for flame-quality weapons and psychic powers (e.g., Avenger)
+  - Attack/Focus Power button rolls damage once and displays in chat (no attack roll needed)
+  - Optional targeting: plays animation toward first targeted token if available
+  - Ammunition tracking: deducts 1 round per shot for weapons (non-horde actors only)
+  - GM selects all tokens in cone (shift-click or drag-select) and runs Flame Attack macro once
+  - Macro processes all selected tokens automatically—each makes Agility dodge test and Catch Fire test
+  - Alternative: Select and process one token at a time (single-token workflow)
+  - Psychic powers with flame quality (Avenger) use identical workflow after successful Focus Power Test
 - **Fire System**: On Fire round processing with damage, fatigue, Willpower tests, Power Armour auto-pass, and extinguish tests
 - **Deathwatch Training**: Auto-confirms Righteous Fury against xenos targets
 - **Initiative**: 1d10 + Agility Bonus + Initiative Bonus
@@ -133,8 +140,12 @@ The system includes three types of macros for streamlined gameplay:
 
 ### Manual Installation
 1. Clone or download this repository
-2. Copy the `src/` folder contents to `{FoundryData}/Data/systems/deathwatch/`
-3. Restart Foundry VTT
+2. Install dependencies: `npm install`
+3. Build compendium packs: `npm run build:packs`
+4. Copy the `src/` folder contents to `{FoundryData}/Data/systems/deathwatch/`
+5. Restart Foundry VTT
+
+**Note:** Steps 2-3 require [Node.js](https://nodejs.org/) v24+. The compendium packs must be compiled from source before the system can be used.
 
 ---
 
@@ -142,7 +153,7 @@ The system includes three types of macros for streamlined gameplay:
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (ES modules support)
-- [Foundry VTT v13](https://foundryvtt.com/)
+- [Foundry VTT v13 or v14](https://foundryvtt.com/)
 
 ### Setup
 ```bash
@@ -155,7 +166,7 @@ npm install
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run all tests (1823 tests across 110 suites) |
+| `npm test` | Run all tests (2354 tests across 139 suites) |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with coverage report |
 | `npm run format:json` | Compact + Prettier JSON formatting |
@@ -191,7 +202,7 @@ builds/scripts/                # Build, validation, and deployment scripts
 
 ### Architecture
 
-The system uses Foundry v13's **TypeDataModel** pattern:
+The system uses Foundry v13-v14's **TypeDataModel** pattern:
 
 - **DataModel classes** (`src/module/data/`) define programmatic schemas and derived data logic for all 4 actor types and 17 item types
 - **Document classes** (`src/module/documents/`) are thin shells that delegate to DataModels

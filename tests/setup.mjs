@@ -15,6 +15,7 @@ global.game = {
   },
   settings: {
     register: jest.fn(),
+    registerMenu: jest.fn(),
     get: jest.fn(),
     set: jest.fn()
   },
@@ -162,6 +163,15 @@ global.foundry = {
     collections: {
       Actors: { unregisterSheet: jest.fn(), registerSheet: jest.fn() },
       Items: { unregisterSheet: jest.fn(), registerSheet: jest.fn() }
+    }
+  },
+  canvas: {
+    placeables: {
+      Region: class Region {
+        constructor(document) {
+          this.document = document;
+        }
+      }
     }
   },
   applications: {

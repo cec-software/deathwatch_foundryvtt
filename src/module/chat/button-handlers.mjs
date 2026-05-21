@@ -53,9 +53,21 @@ export class ChatButtonHandlers {
    * Register Apply Damage button handler
    */
   static _registerApplyDamageButton(html) {
-    html.querySelectorAll('.apply-damage-btn').forEach(btn => btn.addEventListener('click', ErrorHandler.wrap(async (ev) => {
-      const button = ev.currentTarget;
-      const d = button.dataset;
+    html.querySelectorAll('.apply-damage-btn').forEach(btn => {
+      // Check permission and set visibility attribute
+      const targetActor = this._resolveActor(btn);
+      if (targetActor) {
+        const restrictButtons = game.settings.get('deathwatch', 'restrictApplyDamageButton');
+        const canApply = !restrictButtons || game.user.isGM || targetActor.isOwner;
+        btn.dataset.canApply = canApply;
+      } else {
+        // No target actor found - hide button (safety fallback)
+        btn.dataset.canApply = false;
+      }
+
+      btn.addEventListener('click', ErrorHandler.wrap(async (ev) => {
+        const button = ev.currentTarget;
+        const d = button.dataset;
 
       // Validate and parse required fields
       const damage = Validation.requireInt(d.damage, 'Damage');
@@ -99,7 +111,8 @@ export class ChatButtonHandlers {
       if (targetActor.type === 'character' && CohesionHelper.shouldTriggerCohesionDamage(damage, weaponQualities)) {
         await CohesionHelper.handleCohesionDamage(`${Sanitizer.escape(targetActor.name)} took ${damage} raw damage from a qualifying weapon.`);
       }
-    }, 'Apply Damage')));
+      }, 'Apply Damage'));
+    });
   }
 
   /**
@@ -319,17 +332,30 @@ export class ChatButtonHandlers {
    * Register Roll Critical button handler
    */
   static _registerRollCriticalButton(html) {
-    html.querySelectorAll('.roll-critical-btn').forEach(btn => btn.addEventListener('click', ErrorHandler.wrap(async (ev) => {
-      const button = ev.currentTarget;
-      const location = button.dataset.location;
-      const damageType = button.dataset.damageType;
-      const criticalDamage = button.dataset.criticalDamage ? parseInt(button.dataset.criticalDamage) : undefined;
+    html.querySelectorAll('.roll-critical-btn').forEach(btn => {
+      // Check permission and set visibility attribute
+      const targetActor = this._resolveActor(btn, 'actorId');
+      if (targetActor) {
+        const restrictButtons = game.settings.get('deathwatch', 'restrictApplyDamageButton');
+        const canApply = !restrictButtons || game.user.isGM || targetActor.isOwner;
+        btn.dataset.canApply = canApply;
+      } else {
+        // No target actor found - hide button (safety fallback)
+        btn.dataset.canApply = false;
+      }
 
-      const actor = this._resolveActor(button, 'actorId');
-      Validation.requireDocument(actor, 'Actor', 'Roll Critical');
+      btn.addEventListener('click', ErrorHandler.wrap(async (ev) => {
+        const button = ev.currentTarget;
+        const location = button.dataset.location;
+        const damageType = button.dataset.damageType;
+        const criticalDamage = button.dataset.criticalDamage ? parseInt(button.dataset.criticalDamage) : undefined;
 
-      await CriticalEffectsHelper.applyCriticalEffect(actor, location, damageType, criticalDamage);
-    }, 'Roll Critical')));
+        const actor = this._resolveActor(button, 'actorId');
+        Validation.requireDocument(actor, 'Actor', 'Roll Critical');
+
+        await CriticalEffectsHelper.applyCriticalEffect(actor, location, damageType, criticalDamage);
+      }, 'Roll Critical'));
+    });
   }
 
   /**

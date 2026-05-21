@@ -2,6 +2,7 @@ import { getRankImage } from '../../../helpers/character/rank-helper.mjs';
 import { WoundHelper } from '../../../helpers/character/wound-helper.mjs';
 import { SkillHelper } from '../../../helpers/character/skill-helper.mjs';
 import { InsanityHelper } from '../../../helpers/insanity/insanity-helper.mjs';
+import { WeaponQualityHelper } from '../../../helpers/combat/weapon-quality-helper.mjs';
 
 /**
  * Prepares character-specific data for character sheets.
@@ -14,7 +15,7 @@ export class CharacterDataPreparer {
    * @param {Object} context - Sheet context
    * @param {Actor} actor - Actor document
    */
-  static prepare(context, actor) {
+  static async prepare(context, actor) {
     this.prepareCharacteristics(context);
     this.prepareChapterAndSpecialty(context, actor);
     this.prepareSkills(context, actor);
@@ -23,6 +24,22 @@ export class CharacterDataPreparer {
     this.prepareRenown(context);
     this.preparePsyRating(context);
     this.prepareMentalState(context, actor);
+    await this.prepareWeapons(context);
+  }
+
+  /**
+   * Prepare weapons with hasFlame flag for template rendering.
+   * @param {Object} context - Sheet context
+   */
+  static async prepareWeapons(context) {
+    if (!context.items) return;
+
+    // Add hasFlame flag to each weapon
+    for (const item of context.items) {
+      if (item.type === 'weapon') {
+        item.hasFlame = await WeaponQualityHelper.hasQuality(item, 'flame');
+      }
+    }
   }
 
   /**

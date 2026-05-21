@@ -392,6 +392,109 @@ describe('ChatButtonHandlers', () => {
 
       expect(CohesionHelper.handleCohesionDamage).not.toHaveBeenCalled();
     });
+
+    it('should set canApply data attribute to true when user is GM', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: false
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: true
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerApplyDamageButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(true);
+    });
+
+    it('should set canApply data attribute to true when user is actor owner', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: true
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerApplyDamageButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(true);
+    });
+
+    it('should set canApply data attribute to false when user lacks permissions', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: false
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerApplyDamageButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(false);
+    });
+
+    it('should set canApply to false when target actor not found', () => {
+      global.game.actors.get.mockReturnValue(null);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerApplyDamageButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(false);
+    });
+
+    it('should set canApply to true for non-owner when restrictApplyDamageButton is false', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: false
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => false) // restrictApplyDamageButton = false
+      };
+
+      ChatButtonHandlers._registerApplyDamageButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(true);
+    });
   });
 
   /* -------------------------------------------- */
@@ -832,6 +935,140 @@ describe('ChatButtonHandlers', () => {
         'Energy',
         undefined
       );
+    });
+  });
+
+  /* -------------------------------------------- */
+  /*  _registerRollCriticalButton Visibility      */
+  /* -------------------------------------------- */
+
+  describe('Roll Critical Button Visibility', () => {
+    let mockHtml;
+    let mockButton;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      mockButton = {
+        dataset: {
+          actorId: 'actor-123',
+          location: 'Body',
+          damageType: 'Impact'
+        },
+        addEventListener: jest.fn()
+      };
+
+      mockHtml = {
+        querySelectorAll: jest.fn((selector) => {
+          if (selector === '.roll-critical-btn') {
+            return [mockButton];
+          }
+          return [];
+        })
+      };
+    });
+
+    it('should set canApply data attribute to true when user is GM', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: false
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: true
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerRollCriticalButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(true);
+    });
+
+    it('should set canApply data attribute to true when user is actor owner', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: true
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerRollCriticalButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(true);
+    });
+
+    it('should set canApply data attribute to false when user lacks permissions', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: false
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerRollCriticalButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(false);
+    });
+
+    it('should set canApply to false when target actor not found', () => {
+      global.game.actors.get.mockReturnValue(null);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => true) // restrictApplyDamageButton = true
+      };
+
+      ChatButtonHandlers._registerRollCriticalButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(false);
+    });
+
+    it('should set canApply to true for non-owner when restrictApplyDamageButton is false', () => {
+      const mockActor = {
+        id: 'actor-123',
+        name: 'Test Actor',
+        type: 'character',
+        isOwner: false
+      };
+
+      global.game.actors.get.mockReturnValue(mockActor);
+      global.game.scenes = { get: jest.fn(() => null) };
+      global.game.user = {
+        isGM: false
+      };
+      global.game.settings = {
+        get: jest.fn(() => false) // restrictApplyDamageButton = false
+      };
+
+      ChatButtonHandlers._registerRollCriticalButton(mockHtml);
+
+      expect(mockButton.dataset.canApply).toBe(true);
     });
   });
 

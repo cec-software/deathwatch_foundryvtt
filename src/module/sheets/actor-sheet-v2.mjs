@@ -1,7 +1,6 @@
 import { onManageActiveEffect, prepareActiveEffectCategories } from "../helpers/effects.mjs";
 import { DWConfig } from "../helpers/config.mjs";
 import { CombatHelper } from "../helpers/combat/combat.mjs";
-import { PsychicCombatHelper } from "../helpers/combat/psychic-combat.mjs";
 import { ModifierHelper } from "../helpers/character/modifiers.mjs";
 import { RollExecutor } from "../helpers/roll-executor.mjs";
 import { ItemHandlers } from "../helpers/ui/item-handlers.mjs";
@@ -180,7 +179,7 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
 
     // Prepare type-specific data using data preparers
     if (this.actor.type === 'character') {
-      CharacterDataPreparer.prepare(context, this.actor);
+      await CharacterDataPreparer.prepare(context, this.actor);
       ItemListPreparer.prepare(context, this.actor);
 
       // Split demeanours into personal and chapter
@@ -298,7 +297,7 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
   static _onUsePsychicPower(event, target) {
     const itemId = target.dataset.itemId || target.closest('[data-item-id]')?.dataset.itemId;
     const power = this.actor.items.get(itemId);
-    if (power) PsychicCombatHelper.focusPowerDialog(this.actor, power);
+    if (power) game.deathwatch.CombatRouter.executeDamage(this.actor, power);
   }
 
   /**
@@ -349,19 +348,19 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
   static _onWeaponAttack(event, target) {
     const itemId = target.dataset.itemId || target.closest('[data-item-id]')?.dataset.itemId;
     const weapon = this.actor.items.get(itemId);
-    if (weapon) CombatHelper.weaponAttackDialog(this.actor, weapon);
+    if (weapon) game.deathwatch.CombatRouter.executeAttack(this.actor, weapon);
   }
 
   static _onWeaponDamage(event, target) {
     const itemId = target.dataset.itemId;
     const weapon = this.actor.items.get(itemId);
-    if (weapon) CombatHelper.weaponDamageRoll(this.actor, weapon);
+    if (weapon) game.deathwatch.CombatRouter.executeDamage(this.actor, weapon);
   }
 
   static _onWeaponUnjam(event, target) {
     const itemId = target.dataset.itemId;
     const weapon = this.actor.items.get(itemId);
-    if (weapon) CombatHelper.clearJam(this.actor, weapon);
+    if (weapon) game.deathwatch.CombatHelper.clearJam(this.actor, weapon);
   }
 
   static async _onRemoveAmmo(event, target) {
