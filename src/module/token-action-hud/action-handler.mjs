@@ -312,17 +312,8 @@ export function initializeActionHandler(coreModule) {
         this._buildAdvancedSkills(actor);
       }
       // Characteristics - check if any char group is requested
-      const charGroups = [
-        "char-ws",
-        "char-bs",
-        "char-s",
-        "char-t",
-        "char-ag",
-        "char-int",
-        "char-per",
-        "char-wp",
-        "char-fs"
-      ];
+      // Build group IDs from CHARACTERISTICS constant (source of truth)
+      const charGroups = Object.values(CHARACTERISTICS).map(key => `char-${key}`);
       if (charGroups.some((id) => groupIds.includes(id))) {
         this._buildCharacteristics(actor);
       }

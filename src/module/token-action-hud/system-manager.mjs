@@ -5,6 +5,7 @@
 
 import { ActionHandler } from './action-handler.mjs';
 import { RollHandler } from './roll-handler.mjs';
+import { CHARACTERISTICS, CHARACTERISTIC_LABELS } from '../helpers/constants/characteristic-constants.mjs';
 
 export let SystemManager = null;
 
@@ -54,6 +55,17 @@ export function createSystemManager(BaseSystemManager) {
      * @returns {{layout: Array, groups: Array}} Default layout configuration
      */
     registerDefaults() {
+      // Build characteristic groups from CHARACTERISTICS constant (source of truth)
+      const charGroups = {};
+      Object.entries(CHARACTERISTICS).forEach(([_, key]) => {
+        const groupKey = `char${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        charGroups[groupKey] = {
+          id: `char-${key}`,
+          name: CHARACTERISTIC_LABELS[key],
+          type: 'system'
+        };
+      });
+
       const groups = {
         rangedWeapons: { id: 'ranged-weapons', name: 'Ranged Weapons', type: 'system' },
         meleeWeapons: { id: 'melee-weapons', name: 'Melee Weapons', type: 'system' },
@@ -61,17 +73,15 @@ export function createSystemManager(BaseSystemManager) {
         combatActions: { id: 'combat-actions', name: 'Combat Actions', type: 'system' },
         basicSkills: { id: 'basic-skills', name: 'Basic Skills', type: 'system' },
         advancedSkills: { id: 'advanced-skills', name: 'Advanced Skills', type: 'system' },
-        charWS: { id: 'char-ws', name: 'Weapon Skill', type: 'system' },
-        charBS: { id: 'char-bs', name: 'Ballistic Skill', type: 'system' },
-        charS: { id: 'char-s', name: 'Strength', type: 'system' },
-        charT: { id: 'char-t', name: 'Toughness', type: 'system' },
-        charAg: { id: 'char-ag', name: 'Agility', type: 'system' },
-        charInt: { id: 'char-int', name: 'Intelligence', type: 'system' },
-        charPer: { id: 'char-per', name: 'Perception', type: 'system' },
-        charWP: { id: 'char-wp', name: 'Willpower', type: 'system' },
-        charFS: { id: 'char-fs', name: 'Fellowship', type: 'system' },
+        ...charGroups,
         psychicPowers: { id: 'psychic-powers', name: 'Psychic Powers', type: 'system' }
       };
+
+      // Build characteristic layout groups from CHARACTERISTICS constant (source of truth)
+      const charLayoutGroups = Object.values(CHARACTERISTICS).map(key => {
+        const groupKey = `char${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        return { ...charGroups[groupKey], nestId: `characteristics_char-${key}` };
+      });
 
       return {
         layout: [
@@ -102,17 +112,7 @@ export function createSystemManager(BaseSystemManager) {
             id: 'characteristics',
             name: 'Characteristics',
             type: 'system',
-            groups: [
-              { ...groups.charWS, nestId: 'characteristics_char-ws' },
-              { ...groups.charBS, nestId: 'characteristics_char-bs' },
-              { ...groups.charS, nestId: 'characteristics_char-s' },
-              { ...groups.charT, nestId: 'characteristics_char-t' },
-              { ...groups.charAg, nestId: 'characteristics_char-ag' },
-              { ...groups.charInt, nestId: 'characteristics_char-int' },
-              { ...groups.charPer, nestId: 'characteristics_char-per' },
-              { ...groups.charWP, nestId: 'characteristics_char-wp' },
-              { ...groups.charFS, nestId: 'characteristics_char-fs' }
-            ]
+            groups: charLayoutGroups
           },
           {
             nestId: 'psychic-powers',
@@ -174,6 +174,17 @@ export function initializeSystemManager(coreModule) {
      * @returns {{layout: Array, groups: Array}} Default layout configuration
      */
     async registerDefaults() {
+      // Build characteristic groups from CHARACTERISTICS constant (source of truth)
+      const charGroups = {};
+      Object.entries(CHARACTERISTICS).forEach(([_, key]) => {
+        const groupKey = `char${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        charGroups[groupKey] = {
+          id: `char-${key}`,
+          name: CHARACTERISTIC_LABELS[key],
+          type: 'system'
+        };
+      });
+
       // Define group objects (like DND5e's GROUP constant)
       const groups = {
         rangedWeapons: { id: 'ranged-weapons', name: 'Ranged Weapons', type: 'system' },
@@ -181,17 +192,15 @@ export function initializeSystemManager(coreModule) {
         grenades: { id: 'grenades', name: 'Grenades', type: 'system' },
         basicSkills: { id: 'basic-skills', name: 'Basic Skills', type: 'system' },
         advancedSkills: { id: 'advanced-skills', name: 'Advanced Skills', type: 'system' },
-        charWS: { id: 'char-ws', name: 'Weapon Skill', type: 'system' },
-        charBS: { id: 'char-bs', name: 'Ballistic Skill', type: 'system' },
-        charS: { id: 'char-s', name: 'Strength', type: 'system' },
-        charT: { id: 'char-t', name: 'Toughness', type: 'system' },
-        charAg: { id: 'char-ag', name: 'Agility', type: 'system' },
-        charInt: { id: 'char-int', name: 'Intelligence', type: 'system' },
-        charPer: { id: 'char-per', name: 'Perception', type: 'system' },
-        charWP: { id: 'char-wp', name: 'Willpower', type: 'system' },
-        charFS: { id: 'char-fs', name: 'Fellowship', type: 'system' },
+        ...charGroups,
         psychicPowers: { id: 'psychic-powers', name: 'Psychic Powers', type: 'system' }
       };
+
+      // Build characteristic layout groups from CHARACTERISTICS constant (source of truth)
+      const charLayoutGroups = Object.values(CHARACTERISTICS).map(key => {
+        const groupKey = `char${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+        return { ...charGroups[groupKey], nestId: `characteristics_char-${key}` };
+      });
 
       const defaults = {
         layout: [
@@ -221,17 +230,7 @@ export function initializeSystemManager(coreModule) {
             id: 'characteristics',
             name: 'Characteristics',
             type: 'system',
-            groups: [
-              { ...groups.charWS, nestId: 'characteristics_char-ws' },
-              { ...groups.charBS, nestId: 'characteristics_char-bs' },
-              { ...groups.charS, nestId: 'characteristics_char-s' },
-              { ...groups.charT, nestId: 'characteristics_char-t' },
-              { ...groups.charAg, nestId: 'characteristics_char-ag' },
-              { ...groups.charInt, nestId: 'characteristics_char-int' },
-              { ...groups.charPer, nestId: 'characteristics_char-per' },
-              { ...groups.charWP, nestId: 'characteristics_char-wp' },
-              { ...groups.charFS, nestId: 'characteristics_char-fs' }
-            ]
+            groups: charLayoutGroups
           },
           {
             nestId: 'psychic-powers',

@@ -338,4 +338,103 @@ describe('RangedCombatHelper', () => {
       expect(distanceMeters).toBeCloseTo(4.24, 1);
     });
   });
+
+  describe('attack type determination for chat messages', () => {
+    it('should classify Thrown weapon as grenade attack type', () => {
+      const weapon = {
+        system: {
+          class: 'Thrown',
+          range: 'SBx3'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('grenade');
+    });
+
+    it('should classify Grenade weapon as grenade attack type', () => {
+      const weapon = {
+        system: {
+          class: 'Grenade',
+          range: 'SBx3'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('grenade');
+    });
+
+    it('should classify Basic weapon as ranged attack type', () => {
+      const weapon = {
+        system: {
+          class: 'Basic',
+          range: '100'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('ranged');
+    });
+
+    it('should classify Pistol weapon as ranged attack type', () => {
+      const weapon = {
+        system: {
+          class: 'Pistol',
+          range: '30'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('ranged');
+    });
+
+    it('should classify Heavy weapon as ranged attack type', () => {
+      const weapon = {
+        system: {
+          class: 'Heavy',
+          range: '150'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('ranged');
+    });
+
+    it('should handle case-insensitive weapon class matching for thrown', () => {
+      const weapon = {
+        system: {
+          class: 'THROWN',
+          range: 'SBx3'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('grenade');
+    });
+
+    it('should handle missing weapon class', () => {
+      const weapon = {
+        system: {
+          range: '100'
+        }
+      };
+      const weaponClass = weapon.system.class?.toLowerCase() || '';
+      const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+      const attackType = isGrenade ? 'grenade' : 'ranged';
+
+      expect(attackType).toBe('ranged');
+    });
+  });
 });

@@ -851,10 +851,17 @@ export class RangedCombatHelper {
             const rollHtml = await hitRoll.render();
             const sourceTokenId = attackerToken?.id || '';
             const targetTokenId = targetToken?.id || '';
+
+            // Determine attack type: grenades/thrown weapons get "grenade", guns get "ranged"
+            const weaponClass = weapon.system.class?.toLowerCase() || '';
+            const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+            const attackType = isGrenade ? 'grenade' : 'ranged';
+
             const content = `<div class="dw-attack-roll"
   data-actor-id="${actor.id}"
   data-item-id="${weapon.id}"
   data-item-uuid="${weapon.uuid}"
+  data-attack-type="${attackType}"
   data-rounds-fired="${result.roundsFired}"
   data-fire-mode="${autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full'}"
   data-animation-key="${Sanitizer.escape(weapon.system.animationKey || '')}"

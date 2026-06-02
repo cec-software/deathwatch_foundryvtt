@@ -4,6 +4,8 @@
  */
 
 // Characteristic Keys
+// SOURCE OF TRUTH: These keys MUST match actor.system.characteristics schema.
+// All other code (Token Action HUD, UI templates, helpers) derives from this constant.
 export const CHARACTERISTICS = {
   WS: 'ws',
   BS: 'bs',
