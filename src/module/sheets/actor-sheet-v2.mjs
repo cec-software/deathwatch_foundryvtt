@@ -14,6 +14,12 @@ import { ItemListPreparer } from "./shared/data-preparers/item-list-preparer.mjs
 import { InsanityHelper } from "../helpers/insanity/insanity-helper.mjs";
 import { CorruptionHelper } from "../helpers/corruption/corruption-helper.mjs";
 import { XPCalculator } from "../helpers/character/xp-calculator.mjs";
+import { ScrollPositionManager } from "./shared/utils/scroll-position-manager.mjs";
+import { TabManager } from "./shared/utils/tab-manager.mjs";
+import { EnrichmentHelper } from "./shared/utils/enrichment-helper.mjs";
+import { TemplateCompiler } from "./shared/utils/template-compiler.mjs";
+import { HistoryDialogBuilder } from "./shared/utils/history-dialog-builder.mjs";
+import { AdjustmentDialog } from "./shared/utils/adjustment-dialog.mjs";
 
 const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -107,24 +113,12 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
   /** @override — render using per-instance template */
   async _renderHTML(context, options) {
     // Save scroll positions before re-render
-    const el = this.element;
-    if (el) {
-      // Save the main scrollable container (sheet-body) - used by gear tab and other tabs
-      const sheetBody = el.querySelector('.sheet-body');
-      if (sheetBody) this._sheetBodyScrollTop = sheetBody.scrollTop;
-
-      // Save the skills sub-panel scroll position (independent scrollable area)
-      const sc = el.querySelector(".skills-section")?.parentElement;
-      if (sc) this._skillsScrollTop = sc.scrollTop;
+    if (this.element) {
+      this._scrollPositions = ScrollPositionManager.save(this.element);
     }
+
     const template = `systems/deathwatch/templates/actor/actor-${this.document.type}-sheet.html`;
-    const compiled = await foundry.applications.handlebars.getTemplate(template);
-    const htmlString = compiled(context, { allowProtoMethodsByDefault: true, allowProtoPropertiesByDefault: true });
-    const temp = document.createElement("div");
-    temp.innerHTML = htmlString;
-    const content = temp.firstElementChild;
-    content.dataset.applicationPart = "sheet";
-    return { sheet: content };
+    return await TemplateCompiler.compile(template, context);
   }
 
   tabGroups = {
@@ -159,23 +153,8 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
     context.source = this.actor._source.system;
 
     // Enrich HTML for non-editable views
-    if (!this.isEditable) {
-      const enrichmentOptions = {
-        secrets: this.actor.isOwner,
-        relativeTo: this.actor,
-        rollData: context.rollData
-      };
-      context.enriched = {
-        description: await foundry.applications.ux.TextEditor.enrichHTML(
-          this.actor.system.description || '',
-          enrichmentOptions
-        ),
-        pastEvents: await foundry.applications.ux.TextEditor.enrichHTML(
-          this.actor.system.pastEvents || '',
-          enrichmentOptions
-        )
-      };
-    }
+    context.editable = this.isEditable;
+    await EnrichmentHelper.enrichForContext(context, this.actor, ['description', 'pastEvents']);
 
     // Prepare type-specific data using data preparers
     if (this.actor.type === 'character') {
@@ -507,34 +486,20 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
     if (!html) return;
 
     // V1-style tab activation (V2 doesn't auto-manage these)
-    const tabs = new foundry.applications.ux.Tabs({ navSelector: '.sheet-tabs', contentSelector: '.sheet-body', initial: this._activeTab || 'characteristics' });
-    tabs.bind(html);
-    this._tabs = tabs;
-    tabs.activate(this._activeTab || 'characteristics');
-    // Track active tab across re-renders
-    html.querySelectorAll('.sheet-tabs .item').forEach(tab => {
-      tab.addEventListener('click', () => { this._activeTab = tab.dataset.tab; });
+    this._tabs = TabManager.initialize(html, this, {
+      defaultTab: 'characteristics',
+      storageKey: '_activeTab'
     });
 
     // Character sub-tabs
     const characterTab = html.querySelector('.tab[data-tab="description"]');
-    if (characterTab) {
-      const characterSubTabsNav = characterTab.querySelector('.character-subtabs');
-      if (characterSubTabsNav) {
-        const characterSubTabs = new foundry.applications.ux.Tabs({
-          navSelector: '.character-subtabs',
-          contentSelector: '.tab[data-tab="description"]',
-          initial: this._activeCharacterSubTab || 'bio',
-          group: 'character'
-        });
-        characterSubTabs.bind(characterTab);
-        this._characterSubTabs = characterSubTabs;
-        characterSubTabs.activate(this._activeCharacterSubTab || 'bio');
-        // Track active sub-tab across re-renders
-        characterTab.querySelectorAll('.character-subtabs .item').forEach(tab => {
-          tab.addEventListener('click', () => { this._activeCharacterSubTab = tab.dataset.tab; });
-        });
-      }
+    if (characterTab && characterTab.querySelector('.character-subtabs')) {
+      this._characterSubTabs = TabManager.initialize(characterTab, this, {
+        navSelector: '.character-subtabs',
+        contentSelector: '.tab[data-tab="description"]',
+        defaultTab: 'bio',
+        storageKey: '_activeCharacterSubTab'
+      });
     }
 
     // Select all text on focus
@@ -625,17 +590,8 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
       wrapper.addEventListener('dragover', (ev) => ev.preventDefault(), false);
     });
 
-    // Restore sheet-body scroll position (main scroll for gear and other tabs)
-    if (this._sheetBodyScrollTop !== undefined) {
-      const sheetBody = html.querySelector('.sheet-body');
-      if (sheetBody) sheetBody.scrollTop = this._sheetBodyScrollTop;
-    }
-
-    // Restore skills sub-panel scroll position (independent scrollable area)
-    if (this._skillsScrollTop !== undefined) {
-      const sc = html.querySelector(".skills-section")?.parentElement;
-      if (sc) sc.scrollTop = this._skillsScrollTop;
-    }
+    // Restore scroll positions after re-render
+    ScrollPositionManager.restore(html, this._scrollPositions);
 
     // Drag events for macros
     if (this.actor.isOwner) {
@@ -903,78 +859,30 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
 
   static async _onViewCorruptionHistory(event, target) {
     const actor = this.actor;
-    const history = actor.system.corruptionHistory || [];
 
-    let tableRows = '';
-    let runningTotal = 0;
-
-    for (let i = 0; i < history.length; i++) {
-      const entry = history[i];
-      runningTotal += entry.points;
-      const date = new Date(entry.timestamp).toLocaleString();
-      const source = entry.source;
-      tableRows += `
-        <tr>
-          <td>${date}</td>
-          <td class="points-cell">+${entry.points} CP</td>
-          <td>${source}</td>
-          <td>${runningTotal} CP</td>
-          <td class="delete-cell">
-            <button class="delete-history-btn" data-index="${i}" title="Delete Entry">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-    }
-
-    const content = `
-      <div class="history-dialog">
-        <div class="history-table-wrapper">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>Date/Time</th>
-                <th>Points</th>
-                <th>Source</th>
-                <th>Total</th>
-                <th style="width: 60px;">Delete</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows || '<tr><td colspan="5" style="text-align: center;">No corruption history</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-        <div class="history-summary">
-          Total Corruption: <strong>${actor.system.corruption || 0} CP</strong>
-        </div>
-      </div>
-    `;
-
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: `Corruption History - ${actor.name}` },
-      content,
-      buttons: [{
-        action: 'close',
-        icon: 'fas fa-times',
-        label: 'Close',
-        callback: () => {}
-      }],
-      default: 'close',
-      render: (event, dialog) => {
-        dialog.element.querySelectorAll('.delete-history-btn').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const index = parseInt(btn.dataset.index);
-            const history = [...actor.system.corruptionHistory];
-            const deletedEntry = history.splice(index, 1)[0];
-            await actor.update({ 'system.corruptionHistory': history });
-            ui.notifications.info(`Deleted corruption history entry from ${new Date(deletedEntry.timestamp).toLocaleString()}`);
-            dialog.close();
-            // Reopen the dialog
-            DeathwatchActorSheetV2._onViewCorruptionHistory.call({ actor }, event, dialog.element);
-          });
-        });
+    await HistoryDialogBuilder.show({
+      actor,
+      title: `Corruption History - ${actor.name}`,
+      history: actor.system.corruptionHistory || [],
+      columns: [
+        { key: 'date', label: 'Date/Time' },
+        { key: 'points', label: 'Points' },
+        { key: 'source', label: 'Source' },
+        { key: 'total', label: 'Total' }
+      ],
+      formatRow: (entry, index, runningTotal) => ({
+        date: new Date(entry.timestamp).toLocaleString(),
+        points: `+${entry.points} CP`,
+        pointsClass: 'points-cell',
+        source: entry.source,
+        total: `${runningTotal} CP`
+      }),
+      summaryHTML: `Total Corruption: <strong>${actor.system.corruption || 0} CP</strong>`,
+      emptyMessage: 'No corruption history',
+      allowDelete: true,
+      historyField: 'system.corruptionHistory',
+      onDelete: (actor, deletedEntry) => {
+        ui.notifications.info(`Deleted corruption history entry from ${new Date(deletedEntry.timestamp).toLocaleString()}`);
       }
     });
   }
@@ -983,93 +891,51 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
     const actor = this.actor;
     const history = actor.system.insanityHistory || [];
 
-    let tableRows = '';
-    let runningTotal = 0;
+    // Calculate total XP spent for summary
     let totalXPSpent = 0;
-
-    for (let i = 0; i < history.length; i++) {
-      const entry = history[i];
-      runningTotal += entry.points;
-      const date = new Date(entry.timestamp).toLocaleString();
-      const source = entry.source;
-      const testRolled = entry.testRolled ? 'Yes' : 'No';
-      const testResult = entry.testResult || 'N/A';
-      const xpSpent = entry.xpSpent || 0;
-      if (xpSpent > 0) totalXPSpent += xpSpent;
-
-      // Format points display with + or - prefix
-      const pointsDisplay = entry.points >= 0 ? `+${entry.points}` : `${entry.points}`;
-      const pointsClass = entry.points < 0 ? 'points-cell points-negative' : 'points-cell';
-
-      tableRows += `
-        <tr>
-          <td>${date}</td>
-          <td class="${pointsClass}">${pointsDisplay} IP</td>
-          <td>${source}</td>
-          <td>${runningTotal} IP</td>
-          <td>${testRolled}</td>
-          <td class="${entry.testResult?.includes('Success') ? 'test-success' : 'test-failure'}">${testResult}</td>
-          <td>${xpSpent > 0 ? xpSpent + ' XP' : '-'}</td>
-          <td class="delete-cell">
-            <button class="delete-history-btn" data-index="${i}" title="Delete Entry">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `;
+    for (const entry of history) {
+      if (entry.xpSpent > 0) totalXPSpent += entry.xpSpent;
     }
 
-    const content = `
-      <div class="history-dialog">
-        <div class="history-table-wrapper">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>Date/Time</th>
-                <th>Points</th>
-                <th>Source</th>
-                <th>Total</th>
-                <th>Test?</th>
-                <th>Result</th>
-                <th>XP Cost</th>
-                <th style="width: 60px;">Delete</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows || '<tr><td colspan="8" style="text-align: center;">No insanity history</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-        <div class="history-summary">
-          Total Insanity: <strong>${actor.system.insanity || 0} IP</strong>
-          ${totalXPSpent > 0 ? ` | Total XP Spent: <strong>${totalXPSpent} XP</strong>` : ''}
-        </div>
-      </div>
-    `;
+    await HistoryDialogBuilder.show({
+      actor,
+      title: `Insanity History - ${actor.name}`,
+      history,
+      columns: [
+        { key: 'date', label: 'Date/Time' },
+        { key: 'points', label: 'Points' },
+        { key: 'source', label: 'Source' },
+        { key: 'total', label: 'Total' },
+        { key: 'testRolled', label: 'Test?' },
+        { key: 'testResult', label: 'Result' },
+        { key: 'xpCost', label: 'XP Cost' }
+      ],
+      formatRow: (entry, index, runningTotal) => {
+        const pointsDisplay = entry.points >= 0 ? `+${entry.points}` : `${entry.points}`;
+        const pointsClass = entry.points < 0 ? 'points-cell points-negative' : 'points-cell';
+        const testResultClass = entry.testResult?.includes('Success') ? 'test-success' : 'test-failure';
 
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: `Insanity History - ${actor.name}` },
-      content,
-      buttons: [{
-        action: 'close',
-        icon: 'fas fa-times',
-        label: 'Close',
-        callback: () => {}
-      }],
-      default: 'close',
-      render: (event, dialog) => {
-        dialog.element.querySelectorAll('.delete-history-btn').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            const index = parseInt(btn.dataset.index);
-            const history = [...actor.system.insanityHistory];
-            const deletedEntry = history.splice(index, 1)[0];
-            await actor.update({ 'system.insanityHistory': history });
-            ui.notifications.info(`Deleted insanity history entry from ${new Date(deletedEntry.timestamp).toLocaleString()}`);
-            dialog.close();
-            // Reopen the dialog
-            DeathwatchActorSheetV2._onViewInsanityHistory.call({ actor }, event, dialog.element);
-          });
-        });
+        return {
+          date: new Date(entry.timestamp).toLocaleString(),
+          points: `${pointsDisplay} IP`,
+          pointsClass,
+          source: entry.source,
+          total: `${runningTotal} IP`,
+          testRolled: entry.testRolled ? 'Yes' : 'No',
+          testResult: entry.testResult || 'N/A',
+          testResultClass,
+          xpCost: entry.xpSpent > 0 ? `${entry.xpSpent} XP` : '-'
+        };
+      },
+      summaryHTML: `
+        Total Insanity: <strong>${actor.system.insanity || 0} IP</strong>
+        ${totalXPSpent > 0 ? ` | Total XP Spent: <strong>${totalXPSpent} XP</strong>` : ''}
+      `,
+      emptyMessage: 'No insanity history',
+      allowDelete: true,
+      historyField: 'system.insanityHistory',
+      onDelete: (actor, deletedEntry) => {
+        ui.notifications.info(`Deleted insanity history entry from ${new Date(deletedEntry.timestamp).toLocaleString()}`);
       }
     });
   }
@@ -1078,191 +944,58 @@ export class DeathwatchActorSheetV2 extends HandlebarsApplicationMixin(
     const actor = this.actor;
     const breakdown = XPCalculator.calculateXPBreakdown(actor);
 
-    let tableRows = '';
-    let runningTotal = 0;
-
-    for (const entry of breakdown) {
-      runningTotal += entry.cost;
-
-      tableRows += `
-        <tr>
-          <td>${entry.category}</td>
-          <td>${entry.source}</td>
-          <td class="points-cell">${entry.cost} XP</td>
-          <td>${runningTotal} XP</td>
-        </tr>
-      `;
-    }
-
-    const content = `
-      <div class="history-dialog">
-        <div class="history-table-wrapper">
-          <table class="history-table">
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Purchase</th>
-                <th>Cost</th>
-                <th>Total Spent</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows || '<tr><td colspan="4" style="text-align: center;">No XP expenditures</td></tr>'}
-            </tbody>
-          </table>
-        </div>
-        <div class="history-summary">
-          Total XP Spent: <strong>${actor.system.xp.spent || 0} XP</strong>
-          ${breakdown.length > 0 ? ` | Total Purchases: <strong>${breakdown.length}</strong>` : ''}
-        </div>
-      </div>
-    `;
-
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: `Experience Points Breakdown - ${actor.name}` },
-      content,
-      buttons: [{
-        action: 'close',
-        icon: 'fas fa-times',
-        label: 'Close',
-        callback: () => {}
-      }],
-      default: 'close'
+    await HistoryDialogBuilder.show({
+      actor,
+      title: `Experience Points Breakdown - ${actor.name}`,
+      history: breakdown,
+      columns: [
+        { key: 'category', label: 'Category' },
+        { key: 'source', label: 'Purchase' },
+        { key: 'cost', label: 'Cost' },
+        { key: 'total', label: 'Total Spent' }
+      ],
+      formatRow: (entry, index, runningTotal) => ({
+        category: entry.category,
+        source: entry.source,
+        cost: `${entry.cost} XP`,
+        costClass: 'points-cell',
+        total: `${runningTotal} XP`
+      }),
+      summaryHTML: `
+        Total XP Spent: <strong>${actor.system.xp.spent || 0} XP</strong>
+        ${breakdown.length > 0 ? ` | Total Purchases: <strong>${breakdown.length}</strong>` : ''}
+      `,
+      emptyMessage: 'No XP expenditures',
+      allowDelete: false
     });
   }
 
   static async _onAdjustCorruption(event, target) {
     const actor = this.actor;
-    const currentValue = actor.system.corruption || 0;
 
-    const content = `
-      <form class="gm-adjustment-dialog deathwatch-dialog">
-        <div class="form-group">
-          <p>Adjust <strong>${actor.name}</strong>'s Corruption</p>
-          <p>Current Corruption: <strong>${currentValue}</strong></p>
-        </div>
-
-        <div class="form-group">
-          <label>Points to Add/Remove:</label>
-          <input type="number" name="points" value="0" autofocus />
-          <p class="hint">Positive to add, negative to remove</p>
-        </div>
-
-        <div class="form-group">
-          <label>Reason:</label>
-          <input type="text" name="reason" value="Manual adjustment" />
-        </div>
-
-        <div class="form-group preview">
-          <label>New Total:</label>
-          <input type="number" name="preview" value="${currentValue}" readonly class="preview-field" />
-        </div>
-      </form>
-    `;
-
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: 'Adjust Corruption' },
-      content,
-      buttons: [
-        {
-          action: 'apply',
-          icon: 'fas fa-check',
-          label: 'Apply',
-          callback: async (event, button, dialog) => {
-            const el = dialog.element;
-            const points = parseInt(el.querySelector('[name="points"]').value) || 0;
-            const reason = el.querySelector('[name="reason"]').value || 'Manual adjustment';
-
-            if (points === 0) {
-              ui.notifications.info('No points to adjust.');
-              return;
-            }
-
-            await CorruptionHelper.addCorruption(actor, points, reason);
-          }
-        },
-        {
-          action: 'cancel',
-          icon: 'fas fa-times',
-          label: 'Cancel'
-        }
-      ],
-      default: 'apply',
-      render: (event, dialog) => {
-        const el = dialog.element;
-        el.querySelector('[name="points"]').addEventListener('input', (e) => {
-          const points = parseInt(e.target.value) || 0;
-          const newTotal = Math.max(0, currentValue + points);
-          el.querySelector('.preview-field').value = newTotal;
-        });
+    await AdjustmentDialog.show({
+      actor,
+      title: 'Adjust Corruption',
+      fieldLabel: 'Corruption',
+      currentValue: actor.system.corruption || 0,
+      suffix: 'CP',
+      onApply: async (actor, points, reason) => {
+        await CorruptionHelper.addCorruption(actor, points, reason);
       }
     });
   }
 
   static async _onAdjustInsanity(event, target) {
     const actor = this.actor;
-    const currentValue = actor.system.insanity || 0;
 
-    const content = `
-      <form class="gm-adjustment-dialog deathwatch-dialog">
-        <div class="form-group">
-          <p>Adjust <strong>${actor.name}</strong>'s Insanity</p>
-          <p>Current Insanity: <strong>${currentValue}</strong></p>
-        </div>
-
-        <div class="form-group">
-          <label>Points to Add/Remove:</label>
-          <input type="number" name="points" value="0" autofocus />
-          <p class="hint">Positive to add, negative to remove</p>
-        </div>
-
-        <div class="form-group">
-          <label>Reason:</label>
-          <input type="text" name="reason" value="Manual adjustment" />
-        </div>
-
-        <div class="form-group preview">
-          <label>New Total:</label>
-          <input type="number" name="preview" value="${currentValue}" readonly class="preview-field" />
-        </div>
-      </form>
-    `;
-
-    await foundry.applications.api.DialogV2.wait({
-      window: { title: 'Adjust Insanity' },
-      content,
-      buttons: [
-        {
-          action: 'apply',
-          icon: 'fas fa-check',
-          label: 'Apply',
-          callback: async (event, button, dialog) => {
-            const el = dialog.element;
-            const points = parseInt(el.querySelector('[name="points"]').value) || 0;
-            const reason = el.querySelector('[name="reason"]').value || 'Manual adjustment';
-
-            if (points === 0) {
-              ui.notifications.info('No points to adjust.');
-              return;
-            }
-
-            await InsanityHelper.addInsanity(actor, points, reason);
-          }
-        },
-        {
-          action: 'cancel',
-          icon: 'fas fa-times',
-          label: 'Cancel'
-        }
-      ],
-      default: 'apply',
-      render: (event, dialog) => {
-        const el = dialog.element;
-        el.querySelector('[name="points"]').addEventListener('input', (e) => {
-          const points = parseInt(e.target.value) || 0;
-          const newTotal = Math.max(0, currentValue + points);
-          el.querySelector('.preview-field').value = newTotal;
-        });
+    await AdjustmentDialog.show({
+      actor,
+      title: 'Adjust Insanity',
+      fieldLabel: 'Insanity',
+      currentValue: actor.system.insanity || 0,
+      suffix: 'IP',
+      onApply: async (actor, points, reason) => {
+        await InsanityHelper.addInsanity(actor, points, reason);
       }
     });
   }
