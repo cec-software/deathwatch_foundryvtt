@@ -56,38 +56,7 @@ export default class DeathwatchNPC extends DeathwatchActorBase {
   }
 
   prepareDerivedData() {
-    const actor = this.parent;
-
-    // Load skills
-    this.skills = SkillLoader.loadSkills(this.skills);
-
-    // Convert items Map to Array once (performance optimization)
-    const itemsArray = this._getItemsArray();
-
-    // Collect and apply modifiers
-    const allModifiers = ModifierCollector.collectAllModifiers(actor, itemsArray);
-    ModifierCollector.applyCharacteristicModifiers(this.characteristics, allModifiers);
-
-    if (this.skills) {
-      ModifierCollector.applySkillModifiers(this.skills, allModifiers);
-    }
-
-    this.initiativeBonus = ModifierCollector.applyInitiativeModifiers(allModifiers);
-    ModifierCollector.applyWoundModifiers(this.wounds, allModifiers);
-    ModifierCollector.applyFatigueModifiers(this.fatigue, this.characteristics?.tg?.mod || 0);
-    ModifierCollector.applyArmorModifiers(itemsArray, allModifiers);
-    this.naturalArmorValue = ModifierCollector.calculateNaturalArmor(allModifiers, itemsArray);
-
-    // Apply weapon own modifiers after characteristics are computed
-    for (const item of itemsArray) {
-      if (item.type === 'weapon') {
-        item.system._applyOwnModifiers();
-      }
-    }
-
-    // Calculate movement from Agility Bonus
-    const agBonus = this.characteristics?.ag?.mod || 0;
-    if (!this.movement) this.movement = {};
-    ModifierCollector.applyMovementModifiers(this.movement, agBonus, allModifiers);
+    // NPC actors use only base characteristics preparation
+    this._prepareBaseCharacteristics();
   }
 }

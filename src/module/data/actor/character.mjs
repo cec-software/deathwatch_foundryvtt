@@ -243,9 +243,7 @@ export default class DeathwatchCharacter extends DeathwatchActorBase {
     if (this.renown === undefined) this.renown = 0;
 
     // Load skills dynamically from JSON
-    this.skills = SkillLoader.loadSkills(this.skills);
-
-    // Calculate rank and XP
+    // Calculate rank and XP (Character-specific)
     this.rank = XPCalculator.calculateRank(this.xp?.total || this.xp);
     const spentXP = XPCalculator.calculateSpentXP(actor);
 
@@ -254,39 +252,14 @@ export default class DeathwatchCharacter extends DeathwatchActorBase {
       this.xp.available = (this.xp.total || XPCalculator.STARTING_XP) - spentXP;
     }
 
-    // Convert items Map to Array once (performance optimization)
-    const itemsArray = this._getItemsArray();
+    // Use base preparation
+    const { itemsArray, allModifiers } = this._prepareBaseCharacteristics();
 
-    // Compute insanity/corruption derived data
+    // Compute insanity/corruption derived data (Character-specific)
     this.insanityTrackLevel = this._getInsanityTrackLevel();
     this.activeCurse = this._getActiveCurse(itemsArray);
 
-    // Collect and apply modifiers
-    const allModifiers = ModifierCollector.collectAllModifiers(actor, itemsArray);
-    ModifierCollector.applyCharacteristicModifiers(this.characteristics, allModifiers);
-
-    if (this.skills) {
-      ModifierCollector.applySkillModifiers(this.skills, allModifiers);
-    }
-
-    this.initiativeBonus = ModifierCollector.applyInitiativeModifiers(allModifiers);
-    ModifierCollector.applyWoundModifiers(this.wounds, allModifiers);
-    ModifierCollector.applyFatigueModifiers(this.fatigue, this.characteristics?.tg?.mod || 0);
-    ModifierCollector.applyArmorModifiers(itemsArray, allModifiers);
-    this.naturalArmorValue = ModifierCollector.calculateNaturalArmor(allModifiers, itemsArray);
-    ModifierCollector.applyPsyRatingModifiers(this.psyRating, allModifiers);
-
-    // Apply force weapon modifiers after psy rating is computed
-    for (const item of itemsArray) {
-      if (item.type === 'weapon') {
-        item.system._applyOwnModifiers();
-        item.system.applyForceWeaponModifiers();
-      }
-    }
-
-    // Calculate movement from Agility Bonus
-    const agBonus = this.characteristics?.ag?.mod || 0;
-    if (!this.movement) this.movement = {};
-    ModifierCollector.applyMovementModifiers(this.movement, agBonus, allModifiers);
+    // Apply psyker modifiers (base method)
+    this._applyPsykerModifiers(itemsArray, allModifiers);
   }
 }

@@ -72,40 +72,10 @@ export default class DeathwatchEnemy extends DeathwatchActorBase {
   }
 
   prepareDerivedData() {
-    const actor = this.parent;
+    // Use base preparation, then add psyker-specific modifiers
+    const { itemsArray, allModifiers } = this._prepareBaseCharacteristics();
 
-    // Load skills
-    this.skills = SkillLoader.loadSkills(this.skills);
-
-    // Convert items Map to Array once (performance optimization)
-    const itemsArray = this._getItemsArray();
-
-    // Collect and apply modifiers
-    const allModifiers = ModifierCollector.collectAllModifiers(actor, itemsArray);
-    ModifierCollector.applyCharacteristicModifiers(this.characteristics, allModifiers);
-
-    if (this.skills) {
-      ModifierCollector.applySkillModifiers(this.skills, allModifiers);
-    }
-
-    this.initiativeBonus = ModifierCollector.applyInitiativeModifiers(allModifiers);
-    ModifierCollector.applyWoundModifiers(this.wounds, allModifiers);
-    ModifierCollector.applyFatigueModifiers(this.fatigue, this.characteristics?.tg?.mod || 0);
-    ModifierCollector.applyArmorModifiers(itemsArray, allModifiers);
-    this.naturalArmorValue = ModifierCollector.calculateNaturalArmor(allModifiers, itemsArray);
-    ModifierCollector.applyPsyRatingModifiers(this.psyRating, allModifiers);
-
-    // Apply force weapon modifiers after psy rating is computed
-    for (const item of itemsArray) {
-      if (item.type === 'weapon') {
-        item.system._applyOwnModifiers();
-        item.system.applyForceWeaponModifiers();
-      }
-    }
-
-    // Calculate movement from Agility Bonus
-    const agBonus = this.characteristics?.ag?.mod || 0;
-    if (!this.movement) this.movement = {};
-    ModifierCollector.applyMovementModifiers(this.movement, agBonus, allModifiers);
+    // Apply psyker modifiers (base method)
+    this._applyPsykerModifiers(itemsArray, allModifiers);
   }
 }
