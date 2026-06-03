@@ -12,6 +12,53 @@ const { fields } = foundry.data;
  * @extends {DeathwatchDataModel}
  */
 export default class DeathwatchActorBase extends DeathwatchDataModel {
+
+  /**
+   * Convert actor items collection to array.
+   * Handles Map, Array, and generic iterable cases.
+   *
+   * @returns {Item[]} Array of item documents
+   * @protected
+   */
+  _getItemsArray() {
+    const actor = this.parent;
+    return actor.items instanceof Map
+      ? Array.from(actor.items.values())
+      : Array.isArray(actor.items)
+        ? actor.items
+        : Array.from(actor.items);
+  }
+
+  /**
+   * Shared characteristic schema factory.
+   * Used by Character, NPC, and Enemy actor types.
+   *
+   * @param {boolean} [includeDamage=false] - Whether to include damage field (for NPC/Enemy)
+   * @returns {foundry.data.fields.SchemaField} Characteristic schema
+   */
+  static _characteristicFields(includeDamage = false) {
+    const schema = {
+      value: new fields.NumberField({ initial: 0, min: 0, integer: true }),
+      base: new fields.NumberField({ initial: 0, min: 0, integer: true }),
+      bonus: new fields.NumberField({ initial: 0, min: 0, integer: true })
+    };
+
+    // NPC and Enemy actors track characteristic damage
+    if (includeDamage) {
+      schema.damage = new fields.NumberField({ initial: 0, min: 0, integer: true });
+    }
+
+    // Advances tracking (all actor types)
+    schema.advances = new fields.SchemaField({
+      simple: new fields.BooleanField({ initial: false }),
+      intermediate: new fields.BooleanField({ initial: false }),
+      trained: new fields.BooleanField({ initial: false }),
+      expert: new fields.BooleanField({ initial: false })
+    });
+
+    return new fields.SchemaField(schema);
+  }
+
   static defineSchema() {
     const schema = super.defineSchema();
 

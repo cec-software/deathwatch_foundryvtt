@@ -43,22 +43,8 @@ const { fields } = foundry.data;
  */
 export default class DeathwatchCharacter extends DeathwatchActorBase {
 
-  /**
-   * Schema for a single characteristic (value, bonus, advances).
-   */
-  static _characteristicFields() {
-    return new fields.SchemaField({
-      value: new fields.NumberField({ initial: 0, min: 0, integer: true }),
-      base: new fields.NumberField({ initial: 0, min: 0, integer: true }),
-      bonus: new fields.NumberField({ initial: 0, min: 0, integer: true }),
-      advances: new fields.SchemaField({
-        simple: new fields.BooleanField({ initial: false }),
-        intermediate: new fields.BooleanField({ initial: false }),
-        trained: new fields.BooleanField({ initial: false }),
-        expert: new fields.BooleanField({ initial: false })
-      })
-    });
-  }
+  // Note: _characteristicFields() now inherited from DeathwatchActorBase
+  // Character actors do not track characteristic damage
 
   static defineSchema() {
     const schema = super.defineSchema();
@@ -269,11 +255,7 @@ export default class DeathwatchCharacter extends DeathwatchActorBase {
     }
 
     // Convert items Map to Array once (performance optimization)
-    const itemsArray = actor.items instanceof Map
-      ? Array.from(actor.items.values())
-      : Array.isArray(actor.items)
-        ? actor.items
-        : Array.from(actor.items);
+    const itemsArray = this._getItemsArray();
 
     // Compute insanity/corruption derived data
     this.insanityTrackLevel = this._getInsanityTrackLevel();
