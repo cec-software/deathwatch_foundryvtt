@@ -847,36 +847,17 @@ export class RangedCombatHelper {
             const flavor = CombatDialogHelper.buildAttackFlavor(label, modifierParts, hitsParts);
 
             // Create message with data attributes in content area (not just flavor)
-            const rollHtml = await hitRoll.render();
-            const sourceTokenId = attackerToken?.id || '';
-            const targetTokenId = targetToken?.id || '';
-
             // Determine attack type: grenades/thrown weapons get "grenade", guns get "ranged"
             const weaponClass = weapon.system.class?.toLowerCase() || '';
             const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
             const attackType = isGrenade ? 'grenade' : 'ranged';
+            const fireMode = autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full';
 
-            const content = `<div class="dw-attack-roll"
-  data-actor-id="${actor.id}"
-  data-item-id="${weapon.id}"
-  data-item-uuid="${weapon.uuid}"
-  data-attack-type="${attackType}"
-  data-rounds-fired="${result.roundsFired}"
-  data-fire-mode="${autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full'}"
-  data-animation-key="${Sanitizer.escape(weapon.system.animationKey || '')}"
-  data-damage-type="${Sanitizer.escape(weapon.system.dmgType || '')}"
-  data-weapon-class="${Sanitizer.escape(weapon.system.class || '')}"
-  data-source-token-id="${sourceTokenId}"
-  data-target-token-id="${targetTokenId}">
-  <div class="attack-flavor">${flavor}</div>
-  ${rollHtml}
-</div>`;
-
-            await ChatMessage.create({
-              speaker: ChatMessage.getSpeaker({ actor }),
-              content: content,
-              rolls: [hitRoll],
-              rollMode: game.settings.get('core', 'rollMode')
+            await CombatHelper.createAttackChatMessage(actor, weapon, hitRoll, flavor, attackType, {
+              attackerToken,
+              targetToken,
+              roundsFired: result.roundsFired,
+              fireMode
             });
 
             // Thrown weapon scatter on miss
@@ -1032,29 +1013,16 @@ export class RangedCombatHelper {
     const flavor = CombatDialogHelper.buildAttackFlavor(label, modifierParts, hitsParts);
 
     // Embed animation data attributes in chat message content
-    const rollHtml = await hitRoll.render();
-    const sourceTokenId = attackerToken?.id || '';
-    const targetTokenId = targetToken?.id || '';
-    const content = `<div class="dw-attack-roll"
-  data-actor-id="${actor.id}"
-  data-item-id="${weapon.id}"
-  data-item-uuid="${weapon.uuid}"
-  data-rounds-fired="${result.roundsFired}"
-  data-fire-mode="${autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full'}"
-  data-animation-key="${Sanitizer.escape(weapon.system.animationKey || '')}"
-  data-damage-type="${Sanitizer.escape(weapon.system.dmgType || '')}"
-  data-weapon-class="${Sanitizer.escape(weapon.system.class || '')}"
-  data-source-token-id="${sourceTokenId}"
-  data-target-token-id="${targetTokenId}">
-  <div class="attack-flavor">${flavor}</div>
-  ${rollHtml}
-</div>`;
+    const weaponClass = weapon.system.class?.toLowerCase() || '';
+    const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+    const attackType = isGrenade ? 'grenade' : 'ranged';
+    const fireMode = autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full';
 
-    await ChatMessage.create({
-      speaker: ChatMessage.getSpeaker({ actor }),
-      content: content,
-      rolls: [hitRoll],
-      rollMode: game.settings.get('core', 'rollMode')
+    await CombatHelper.createAttackChatMessage(actor, weapon, hitRoll, flavor, attackType, {
+      attackerToken,
+      targetToken,
+      roundsFired: result.roundsFired,
+      fireMode
     });
 
     // Thrown weapon scatter on miss

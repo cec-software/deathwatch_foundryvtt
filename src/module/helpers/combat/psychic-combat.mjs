@@ -555,30 +555,13 @@ export class PsychicCombatHelper {
 
               // Capture token information for animation
               const sourceToken = actor.getActiveTokens()[0];
-              const sourceTokenId = sourceToken?.id || '';
               const targetToken = game.user.targets?.first();
-              const targetTokenId = targetToken?.id || '';
 
-              // Wrap in .dw-attack-roll div with animation metadata
-              const content = `<div class="dw-attack-roll"
-  data-attack-type="psychic"
-  data-actor-id="${actor.id}"
-  data-item-id="${power.id}"
-  data-item-uuid="${power.uuid}"
-  data-animation-key="${Sanitizer.escape(power.system.key || '')}"
-  data-source-token-id="${sourceTokenId}"
-  data-target-token-id="${targetTokenId}"
-  data-power-level="${powerLevel}">
-  <div class="attack-flavor">${flavor}</div>
-  ${rollHtml}
-</div>`;
-
-              // Create chat message with structured content
-              await FoundryAdapter.createChatMessage({
-                speaker,
-                content,
-                rolls: [hitRoll],
-                rollMode: game.settings.get('core', 'rollMode')
+              // Create attack chat message (psychic powers don't need damage-type/weapon-class)
+              await CombatHelper.createAttackChatMessage(actor, power, hitRoll, flavor, 'psychic', {
+                attackerToken: sourceToken,
+                targetToken,
+                powerLevel
               });
             } else {
               // Failed manifestation - no wrapper, no animation
