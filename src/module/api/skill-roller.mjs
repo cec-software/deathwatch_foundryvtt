@@ -1,23 +1,20 @@
 import { RollExecutor } from "../helpers/roll-executor.mjs";
 import { Logger } from "../helpers/logger.mjs";
+import { DWConfig } from "../helpers/config.mjs";
+import { RollApiHelper } from "./roll-api-helper.mjs";
+import { ActorHelper } from "../helpers/actor-helper.mjs";
 
 /**
  * Difficulty presets for skill tests.
+ * Converts DWConfig.TestDifficulties to simple label->modifier map.
  * @enum {number}
  */
-const DIFFICULTY = {
-  'Trivial': 60,
-  'Easy': 30,
-  'Routine': 20,
-  'Ordinary': 10,
-  'Challenging': 0,
-  'Difficult': -10,
-  'Hard': -20,
-  'Very Hard': -30,
-  'Arduous': -40,
-  'Punishing': -50,
-  'Hellish': -60
-};
+const DIFFICULTY = Object.entries(DWConfig.TestDifficulties).reduce((acc, [key, value]) => {
+  // Capitalize first letter of label for backwards compatibility
+  const capitalizedLabel = value.label.charAt(0).toUpperCase() + value.label.slice(1);
+  acc[capitalizedLabel] = value.modifier;
+  return acc;
+}, {});
 
 /**
  * Public API for rolling skill tests programmatically from macros.
@@ -77,12 +74,8 @@ export class SkillRoller {
    */
   static async rollSkill(actorId, skillName, options = {}) {
     // Validate inputs
-    const actor = game.actors.get(actorId);
-    if (!actor) {
-      Logger.category('CHARACTER.SKILLS').error(`Actor not found: ${actorId}`);
-      ui.notifications.error(`Actor not found: ${actorId}`);
-      return null;
-    }
+    const actor = ActorHelper.validateActor(actorId, 'CHARACTER.SKILLS');
+    if (!actor) return null;
 
     if (!skillName || typeof skillName !== 'string') {
       Logger.category('CHARACTER.SKILLS').error('Skill name must be a non-empty string');
@@ -125,7 +118,7 @@ export class SkillRoller {
     const skillTotal = effectiveChar + skillBonus + (skill.modifier || 0) + (skill.modifierTotal || 0);
 
     // Parse difficulty modifier
-    const difficultyModifier = this._parseDifficulty(difficulty);
+    const difficultyModifier = RollApiHelper.parseDifficulty(difficulty);
 
     Logger.category('CHARACTER.SKILLS').debug(`Rolling ${label} for ${actor.name}`, {
       skillTotal,
@@ -175,28 +168,6 @@ export class SkillRoller {
     }
 
     return null;
-  }
-
-  /**
-   * Parse difficulty string or number to numeric modifier.
-   *
-   * @param {string|number} difficulty - Difficulty preset name or numeric value
-   * @returns {number} Numeric modifier
-   * @private
-   */
-  static _parseDifficulty(difficulty) {
-    if (typeof difficulty === 'number') {
-      return difficulty;
-    }
-
-    if (typeof difficulty === 'string') {
-      const preset = DIFFICULTY[difficulty];
-      if (preset !== undefined) {
-        return preset;
-      }
-    }
-
-    return 0; // Default to Challenging (no modifier)
   }
 
   /**

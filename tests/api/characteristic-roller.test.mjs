@@ -87,23 +87,8 @@ describe('CharacteristicRoller', () => {
     // (Don't overwrite global.foundry or we'll lose the setup.mjs mocks)
   });
 
-  describe('_parseDifficulty', () => {
-    it('should parse numeric difficulty', () => {
-      expect(CharacteristicRoller._parseDifficulty(20)).toBe(20);
-      expect(CharacteristicRoller._parseDifficulty(-30)).toBe(-30);
-    });
-
-    it('should parse difficulty preset strings', () => {
-      expect(CharacteristicRoller._parseDifficulty('Easy')).toBe(30);
-      expect(CharacteristicRoller._parseDifficulty('Hard')).toBe(-20);
-      expect(CharacteristicRoller._parseDifficulty('Challenging')).toBe(0);
-    });
-
-    it('should return 0 for invalid difficulty', () => {
-      expect(CharacteristicRoller._parseDifficulty('invalid')).toBe(0);
-      expect(CharacteristicRoller._parseDifficulty(null)).toBe(0);
-    });
-  });
+  // Note: _parseDifficulty() removed - functionality moved to RollApiHelper
+  // See tests/api/roll-api-helper.test.mjs for difficulty parsing tests
 
   describe('rollCharacteristic', () => {
     it('should return null if actor not found', async () => {

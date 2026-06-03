@@ -138,23 +138,8 @@ describe('SkillRoller', () => {
     });
   });
 
-  describe('_parseDifficulty', () => {
-    it('should parse numeric difficulty', () => {
-      expect(SkillRoller._parseDifficulty(20)).toBe(20);
-      expect(SkillRoller._parseDifficulty(-30)).toBe(-30);
-    });
-
-    it('should parse difficulty preset strings', () => {
-      expect(SkillRoller._parseDifficulty('Easy')).toBe(30);
-      expect(SkillRoller._parseDifficulty('Hard')).toBe(-20);
-      expect(SkillRoller._parseDifficulty('Challenging')).toBe(0);
-    });
-
-    it('should return 0 for invalid difficulty', () => {
-      expect(SkillRoller._parseDifficulty('invalid')).toBe(0);
-      expect(SkillRoller._parseDifficulty(null)).toBe(0);
-    });
-  });
+  // Note: _parseDifficulty() removed - functionality moved to RollApiHelper
+  // See tests/api/roll-api-helper.test.mjs for difficulty parsing tests
 
   describe('rollSkill', () => {
     it('should return null if actor not found', async () => {

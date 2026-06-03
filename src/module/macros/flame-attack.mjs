@@ -1,5 +1,6 @@
 import { CombatHelper } from '../helpers/combat/combat.mjs';
 import { FireHelper } from '../helpers/combat/fire-helper.mjs';
+import { handleFlameDodgePrompt } from '../init/socket.mjs';
 
 /**
  * Parse recent chat messages for flamer damage rolls.
@@ -78,97 +79,8 @@ async function handleHordeFlameAttack(targetActor, targetName, weaponRange, dama
  * @param {string} damageType - Damage type
  * @param {Token} sourceToken - Source token for animation
  * @param {Token} targetToken - Target token for animation
+ * @deprecated Moved to socket.mjs - use handleFlameDodgePrompt from '../init/socket.mjs'
  */
-async function handleFlameDodgeRoll(targetActor, targetName, ag, dodgeDialog, damageFormula, penetration, damageType, sourceToken, targetToken) {
-    const dodgeMod = parseInt(dodgeDialog.element.querySelector('#dodgeMod').value) || 0;
-    const dodgeRoll = await new Roll('1d100').evaluate();
-    const dodgeResult = FireHelper.resolveDodgeFlameTest(ag, dodgeRoll.total, dodgeMod);
-    const dodgeFlavor = FireHelper.buildDodgeFlameFlavor(targetName, ag, dodgeResult, dodgeMod);
-
-    await dodgeRoll.toMessage({
-        speaker: ChatMessage.getSpeaker({ actor: targetActor }),
-        flavor: dodgeFlavor,
-        rollMode: game.settings.get('core', 'rollMode')
-    });
-
-    if (!dodgeResult.success) {
-        // Apply damage
-        const damageRoll = await new Roll(damageFormula).evaluate();
-        const damage = damageRoll.total;
-        const locRoll = await new Roll('1d100').evaluate();
-        const location = CombatHelper.determineHitLocation(locRoll.total);
-
-        await CombatHelper.applyDamage(targetActor, {
-            damage, penetration, location, damageType,
-            felling: 0, isPrimitive: false, isRazorSharp: false,
-            degreesOfSuccess: 0, isScatter: false, isLongOrExtremeRange: false,
-            isShocking: false, isToxic: false, isMeltaRange: false
-        });
-
-        // Catch Fire test
-        const catchFireRoll = await new Roll('1d100').evaluate();
-        const catchResult = FireHelper.resolveCatchFireTest(ag, catchFireRoll.total);
-        const catchFlavor = FireHelper.buildCatchFireFlavor(targetName, ag, catchResult);
-
-        if (!catchResult.success) {
-            await targetActor.setCondition('on-fire', true);
-        }
-
-        await catchFireRoll.toMessage({
-            speaker: ChatMessage.getSpeaker({ actor: targetActor }),
-            flavor: catchFlavor,
-            rollMode: game.settings.get('core', 'rollMode')
-        });
-    }
-}
-
-/**
- * GM-only handler for flame dodge prompt.
- * Invoked via socket when player initiates flame attack against individual target.
- * @param {Object} data - Socket data
- */
-export async function handleFlameDodgePrompt(data) {
-    const { targetActorId, targetName, damageFormula, penetration, damageType, sourceTokenId, targetTokenId, sceneId } = data;
-
-    // Resolve tokens
-    const scene = game.scenes.get(sceneId);
-    if (!scene) return;
-
-    const sourceTokenDoc = scene.tokens.get(sourceTokenId);
-    const targetTokenDoc = scene.tokens.get(targetTokenId);
-    if (!sourceTokenDoc || !targetTokenDoc) return;
-
-    const sourceToken = sourceTokenDoc.object;
-    const targetToken = targetTokenDoc.object;
-    const targetActor = targetTokenDoc.actor;
-    if (!targetActor) return;
-    const ag = targetActor.system.characteristics?.ag?.value || 0;
-
-    const dodgeContent = `
-      <div style="margin-bottom: 8px;"><strong>🔥 Dodge Flame: ${targetName}</strong></div>
-      <div class="form-group">
-        <label>AG: ${ag}</label>
-      </div>
-      <div class="form-group">
-        <label>Misc Modifier:</label>
-        <input type="number" id="dodgeMod" value="0" style="width: 60px;" />
-      </div>
-    `;
-
-    // GM sees dodge dialog
-    foundry.applications.api.DialogV2.wait({
-        window: { title: `🔥 Dodge Flame: ${targetName}` },
-        content: dodgeContent,
-        buttons: [
-            {
-                label: 'Roll Dodge', action: 'roll',
-                callback: (event, button, dodgeDialog) =>
-                    handleFlameDodgeRoll(targetActor, targetName, ag, dodgeDialog, damageFormula, penetration, damageType, sourceToken, targetToken)
-            },
-            { label: 'Cancel', action: 'cancel' }
-        ]
-    });
-}
 
 /**
  * Handle flame attack against an individual target (non-horde).
