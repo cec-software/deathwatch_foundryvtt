@@ -24,6 +24,44 @@ export class WeaponQualityHelper {
   }
 
   /**
+   * Check multiple weapon qualities in a single pass through attachedQualities.
+   * Reduces async overhead from 10-15 sequential hasQuality() calls to a single batch operation.
+   *
+   * @param {Object} weapon - The weapon item
+   * @param {string[]} qualityKeys - Array of quality keys to check
+   * @returns {Promise<Object>} Object mapping quality keys to boolean presence
+   *
+   * @example
+   * const qualities = await WeaponQualityHelper.checkMultipleQualities(weapon, [
+   *   'accurate', 'storm', 'twin-linked', 'scatter'
+   * ]);
+   * if (qualities.storm) { ... }
+   * if (qualities['twin-linked']) { ... }
+   */
+  static async checkMultipleQualities(weapon, qualityKeys) {
+    const result = {};
+
+    // Initialize all keys to false
+    for (const key of qualityKeys) {
+      result[key] = false;
+    }
+
+    // Single pass through attachedQualities
+    const qualityIds = weapon.system.attachedQualities || [];
+    for (const q of qualityIds) {
+      const id = typeof q === 'string' ? q : q.id;
+      const key = await this.getQualityKey(id);
+
+      // Mark as true if key is in the requested list
+      if (qualityKeys.includes(key)) {
+        result[key] = true;
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Extract a numeric value from a weapon quality.
    * @param {Object} weapon - The weapon item
    * @param {string} qualityKey - The quality key to search for (e.g., 'blast', 'devastating', 'proven')

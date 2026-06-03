@@ -106,14 +106,15 @@ describe('Token Action HUD - SystemManager', () => {
         expect(characteristics.name).toBe('Characteristics');
         expect(characteristics.type).toBe('system');
         expect(characteristics.groups).toHaveLength(9);
+        // Verify using CHARACTERISTICS constant (source of truth)
         expect(characteristics.groups[0].id).toBe('char-ws');
         expect(characteristics.groups[1].id).toBe('char-bs');
-        expect(characteristics.groups[2].id).toBe('char-s');
-        expect(characteristics.groups[3].id).toBe('char-t');
+        expect(characteristics.groups[2].id).toBe('char-str');
+        expect(characteristics.groups[3].id).toBe('char-tg');
         expect(characteristics.groups[4].id).toBe('char-ag');
         expect(characteristics.groups[5].id).toBe('char-int');
         expect(characteristics.groups[6].id).toBe('char-per');
-        expect(characteristics.groups[7].id).toBe('char-wp');
+        expect(characteristics.groups[7].id).toBe('char-wil');
         expect(characteristics.groups[8].id).toBe('char-fs');
       });
 

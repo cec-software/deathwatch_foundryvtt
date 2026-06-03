@@ -47,6 +47,7 @@ When starting work on this project, read CLAUDE.md first for quick start, then c
 
 - [Build Scripts](reference_build_scripts.md) — Location and purpose of build pipeline scripts
 - [Test Organization](reference_tests.md) — Test file structure and patterns
+- [Animation System Architecture](animation_system.md) — Chat message data attributes, AnimationHook behavior, preventing dual-firing bugs
 
 ---
 

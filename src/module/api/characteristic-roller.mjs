@@ -1,24 +1,21 @@
 import { RollExecutor } from "../helpers/roll-executor.mjs";
 import { CyberneticHelper } from "../helpers/cybernetic-helper.mjs";
 import { Logger } from "../helpers/logger.mjs";
+import { DWConfig } from "../helpers/config.mjs";
+import { RollApiHelper } from "./roll-api-helper.mjs";
+import { ActorHelper } from "../helpers/actor-helper.mjs";
 
 /**
  * Difficulty presets for characteristic tests.
+ * Converts DWConfig.TestDifficulties to simple label->modifier map.
  * @enum {number}
  */
-const DIFFICULTY = {
-  'Trivial': 60,
-  'Easy': 30,
-  'Routine': 20,
-  'Ordinary': 10,
-  'Challenging': 0,
-  'Difficult': -10,
-  'Hard': -20,
-  'Very Hard': -30,
-  'Arduous': -40,
-  'Punishing': -50,
-  'Hellish': -60
-};
+const DIFFICULTY = Object.entries(DWConfig.TestDifficulties).reduce((acc, [key, value]) => {
+  // Capitalize first letter of label for backwards compatibility
+  const capitalizedLabel = value.label.charAt(0).toUpperCase() + value.label.slice(1);
+  acc[capitalizedLabel] = value.modifier;
+  return acc;
+}, {});
 
 /**
  * Characteristic key mappings (short to full name).
@@ -103,12 +100,8 @@ export class CharacteristicRoller {
    */
   static async rollCharacteristic(actorId, characteristicKey, options = {}) {
     // Validate inputs
-    const actor = game.actors.get(actorId);
-    if (!actor) {
-      Logger.category('CHARACTER.CHARACTERISTICS').error(`Actor not found: ${actorId}`);
-      ui.notifications.error(`Actor not found: ${actorId}`);
-      return null;
-    }
+    const actor = ActorHelper.validateActor(actorId, 'CHARACTER.CHARACTERISTICS');
+    if (!actor) return null;
 
     if (!characteristicKey || typeof characteristicKey !== 'string') {
       Logger.category('CHARACTER.CHARACTERISTICS').error('Characteristic key must be a non-empty string');
@@ -143,7 +136,7 @@ export class CharacteristicRoller {
     const hasReplacements = replacements.length > 0;
 
     // Parse difficulty modifier
-    const difficultyModifier = this._parseDifficulty(difficulty);
+    const difficultyModifier = RollApiHelper.parseDifficulty(difficulty);
 
     Logger.category('CHARACTER.CHARACTERISTICS').debug(`Rolling ${label} for ${actor.name}`, {
       charKey,
@@ -175,28 +168,6 @@ export class CharacteristicRoller {
 
     // Show dialog with pre-filled modifiers
     return RollExecutor.showCharacteristicDialog(actor, charKey, label, characteristic, modifier, difficultyModifier);
-  }
-
-  /**
-   * Parse difficulty string or number to numeric modifier.
-   *
-   * @param {string|number} difficulty - Difficulty preset name or numeric value
-   * @returns {number} Numeric modifier
-   * @private
-   */
-  static _parseDifficulty(difficulty) {
-    if (typeof difficulty === 'number') {
-      return difficulty;
-    }
-
-    if (typeof difficulty === 'string') {
-      const preset = DIFFICULTY[difficulty];
-      if (preset !== undefined) {
-        return preset;
-      }
-    }
-
-    return 0; // Default to Challenging (no modifier)
   }
 
   /**

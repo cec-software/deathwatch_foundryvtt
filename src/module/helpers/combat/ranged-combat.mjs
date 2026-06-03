@@ -157,6 +157,39 @@ export class RangedCombatHelper {
   }
 
   /**
+   * Convert scatter direction and distance to pixel offset.
+   * @param {string} direction - Direction name from scatter table ("Upper Left", "Right", etc.)
+   * @param {number} distanceMeters - Scatter distance in meters
+   * @param {Object} grid - Grid parameters for testability
+   * @param {number} grid.gridDistance - Meters per grid square (default 3)
+   * @param {number} grid.gridSize - Pixels per grid square (default 100)
+   * @returns {{dx: number, dy: number}} Pixel offset to add to target coordinates
+   */
+  static scatterToPixelOffset(direction, distanceMeters, { gridDistance = 3, gridSize = 100 } = {}) {
+    const DIRECTION_ANGLES = {
+      "Upper Left": 225,
+      "Up": 270,
+      "Upper Right": 315,
+      "Left": 180,
+      "Right": 0,
+      "Lower Left": 135,
+      "Down": 90,
+      "Lower Right": 45
+    };
+
+    const angleDeg = DIRECTION_ANGLES[direction];
+    if (angleDeg === undefined) return { dx: 0, dy: 0 };
+
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const pixelDistance = (distanceMeters / gridDistance) * gridSize;
+
+    return {
+      dx: Math.cos(angleRad) * pixelDistance,
+      dy: Math.sin(angleRad) * pixelDistance
+    };
+  }
+
+  /**
    * Calculate effective range for thrown weapons based on Strength Bonus.
    *
    * Thrown weapons (grenades, knives, etc.) have range = SB × multiplier.
@@ -443,7 +476,8 @@ export class RangedCombatHelper {
    * @param {string} [options.calledShot] - Preset called shot location
    * @param {number} [options.miscModifier] - Preset misc modifier
    * @param {boolean} [options.skipDialog] - If true, skip dialog and roll immediately
-   * @returns {Promise<void>} Resolves when attack is complete
+   * @param {Object} [options.targetLocation] - Target pixel coordinates {x, y} for range calculation (used by grenade flow)
+   * @returns {Promise<Object|null>} The attack result object, or null if cancelled/no attack
    * @example
    * // Standard attack with dialog
    * await RangedCombatHelper.attackDialog(actor, boltgun);
@@ -474,18 +508,17 @@ export class RangedCombatHelper {
     const bs = actor.system.characteristics.bs.value || 0;
     const agBonus = actor.system.characteristics?.ag?.mod || 0;
 
-    const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-    const targetToken = game.user.targets.first();
-    
-    if (!targetToken) {
+    const { attackerToken, targetToken } = CombatHelper.getAttackTokens(actor);
+
+    if (!options.targetLocation && !targetToken) {
       ui.notifications.warn("No target selected. Please target a token before attacking.");
     }
-    
+
     let autoRangeMod = 0;
     let rangeLabel = "Unknown";
     let distanceText = "";
-    
-    if (attackerToken && targetToken) {
+
+    if (attackerToken && (targetToken || options.targetLocation)) {
       let weaponRange = 0;
       if (weapon.system.class?.toLowerCase() === 'thrown') {
         const thrownRange = this.calculateThrownWeaponRange(weapon, actor);
@@ -494,9 +527,18 @@ export class RangedCombatHelper {
       else {
         weaponRange = parseInt(weapon.system.effectiveRange || weapon.system.range) || 0;
       }
-      
+
       if (weaponRange > 0) {
-        const distance = CombatHelper.getTokenDistance(attackerToken, targetToken);
+        let distance;
+        if (options.targetLocation) {
+          const pixelDistance = Math.hypot(
+            options.targetLocation.x - attackerToken.center.x,
+            options.targetLocation.y - attackerToken.center.y
+          );
+          distance = pixelDistance / (canvas.grid.size / canvas.grid.distance);
+        } else {
+          distance = CombatHelper.getTokenDistance(attackerToken, targetToken);
+        }
         if (distance !== null) {
           const rangeInfo = CombatHelper.calculateRangeModifier(distance, weaponRange);
           autoRangeMod = rangeInfo.modifier;
@@ -574,7 +616,8 @@ export class RangedCombatHelper {
       </div>
     `;
 
-    foundry.applications.api.DialogV2.wait({
+    let attackResult = null;
+    await foundry.applications.api.DialogV2.wait({
       window: { title: `Ranged Attack: ${safeWeaponName}` },
       position: { width: 325 },
       content: content,
@@ -796,34 +839,25 @@ export class RangedCombatHelper {
             CombatHelper.lastAttackDistance = attackerToken && targetToken ? CombatHelper.getTokenDistance(attackerToken, targetToken) : null;
             CombatHelper.lastCalledShotLocation = (calledShot !== 0 && hitsTotal > 0) ? el.querySelector('#calledShotLocation').value : null;
 
+            // Store result for caller (grenade flow needs hit/miss)
+            attackResult = result;
+
             // Post chat message with data attributes for Automated Animations module
             const label = CombatDialogHelper.buildAttackLabel(weapon.name, targetNumber, hitsTotal, isJammed || hasPrematureDetonation, isOverheated);
             const flavor = CombatDialogHelper.buildAttackFlavor(label, modifierParts, hitsParts);
 
             // Create message with data attributes in content area (not just flavor)
-            const rollHtml = await hitRoll.render();
-            const sourceTokenId = attackerToken?.id || '';
-            const targetTokenId = targetToken?.id || '';
-            const content = `<div class="dw-attack-roll"
-  data-actor-id="${actor.id}"
-  data-item-id="${weapon.id}"
-  data-item-uuid="${weapon.uuid}"
-  data-rounds-fired="${result.roundsFired}"
-  data-fire-mode="${autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full'}"
-  data-animation-key="${Sanitizer.escape(weapon.system.animationKey || '')}"
-  data-damage-type="${Sanitizer.escape(weapon.system.dmgType || '')}"
-  data-weapon-class="${Sanitizer.escape(weapon.system.class || '')}"
-  data-source-token-id="${sourceTokenId}"
-  data-target-token-id="${targetTokenId}">
-  <div class="attack-flavor">${flavor}</div>
-  ${rollHtml}
-</div>`;
+            // Determine attack type: grenades/thrown weapons get "grenade", guns get "ranged"
+            const weaponClass = weapon.system.class?.toLowerCase() || '';
+            const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+            const attackType = isGrenade ? 'grenade' : 'ranged';
+            const fireMode = autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full';
 
-            await ChatMessage.create({
-              speaker: ChatMessage.getSpeaker({ actor }),
-              content: content,
-              rolls: [hitRoll],
-              rollMode: game.settings.get('core', 'rollMode')
+            await CombatHelper.createAttackChatMessage(actor, weapon, hitRoll, flavor, attackType, {
+              attackerToken,
+              targetToken,
+              roundsFired: result.roundsFired,
+              fireMode
             });
 
             // Thrown weapon scatter on miss
@@ -833,24 +867,13 @@ export class RangedCombatHelper {
             }
 
             // Deduct ammo
-            const isHorde = actor.type === 'horde';
-            if (!isHorde && hasAmmoManagement && weapon.system.loadedAmmo) {
-              const loadedAmmo = actor.items.get(weapon.system.loadedAmmo);
-              if (loadedAmmo) {
-                const newAmmoValue = Math.max(0, loadedAmmo.system.capacity.value - ammoExpended);
-                await loadedAmmo.update({ "system.capacity.value": newAmmoValue });
-                if (newAmmoValue === 0) {
-                  const safeWeaponName = Sanitizer.escape(weapon.name);
-                  ui.notifications.warn(`${safeWeaponName} is out of ammunition!`);
-                }
-                actor.sheet.render(false);
-              }
-            }
+            await CombatHelper.deductAmmo(actor, weapon, ammoExpended, hasAmmoManagement);
           }
         },
         { label: "Cancel", action: "cancel" }
       ]
     });
+    return attackResult;
   }
 
   /**
@@ -885,8 +908,7 @@ export class RangedCombatHelper {
     const clip = weapon.system.clip;
     const hasAmmoManagement = clip && clip !== '\u2014' && clip !== '-' && clip !== '';
 
-    const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-    const targetToken = game.user.targets.first();
+    const { attackerToken, targetToken } = CombatHelper.getAttackTokens(actor);
 
     let autoRangeMod = 0;
     let rangeLabel = "Unknown";
@@ -991,29 +1013,16 @@ export class RangedCombatHelper {
     const flavor = CombatDialogHelper.buildAttackFlavor(label, modifierParts, hitsParts);
 
     // Embed animation data attributes in chat message content
-    const rollHtml = await hitRoll.render();
-    const sourceTokenId = attackerToken?.id || '';
-    const targetTokenId = targetToken?.id || '';
-    const content = `<div class="dw-attack-roll"
-  data-actor-id="${actor.id}"
-  data-item-id="${weapon.id}"
-  data-item-uuid="${weapon.uuid}"
-  data-rounds-fired="${result.roundsFired}"
-  data-fire-mode="${autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full'}"
-  data-animation-key="${Sanitizer.escape(weapon.system.animationKey || '')}"
-  data-damage-type="${Sanitizer.escape(weapon.system.dmgType || '')}"
-  data-weapon-class="${Sanitizer.escape(weapon.system.class || '')}"
-  data-source-token-id="${sourceTokenId}"
-  data-target-token-id="${targetTokenId}">
-  <div class="attack-flavor">${flavor}</div>
-  ${rollHtml}
-</div>`;
+    const weaponClass = weapon.system.class?.toLowerCase() || '';
+    const isGrenade = weaponClass.includes('thrown') || weaponClass.includes('grenade');
+    const attackType = isGrenade ? 'grenade' : 'ranged';
+    const fireMode = autoFire === 0 ? 'single' : autoFire === 10 ? 'semi' : 'full';
 
-    await ChatMessage.create({
-      speaker: ChatMessage.getSpeaker({ actor }),
-      content: content,
-      rolls: [hitRoll],
-      rollMode: game.settings.get('core', 'rollMode')
+    await CombatHelper.createAttackChatMessage(actor, weapon, hitRoll, flavor, attackType, {
+      attackerToken,
+      targetToken,
+      roundsFired: result.roundsFired,
+      fireMode
     });
 
     // Thrown weapon scatter on miss

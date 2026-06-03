@@ -5,6 +5,7 @@ import { FoundryAdapter } from "../foundry-adapter.mjs";
 import { ChatMessageBuilder } from "../ui/chat-message-builder.mjs";
 import { RighteousFuryHelper } from "./righteous-fury-helper.mjs";
 import { Sanitizer } from "../sanitizer.mjs";
+import { CombatHelper } from "./combat.mjs";
 
 /**
  * Psychic combat helper for Focus Power Tests, Psy Rating, and Phenomena/Perils.
@@ -554,30 +555,13 @@ export class PsychicCombatHelper {
 
               // Capture token information for animation
               const sourceToken = actor.getActiveTokens()[0];
-              const sourceTokenId = sourceToken?.id || '';
               const targetToken = game.user.targets?.first();
-              const targetTokenId = targetToken?.id || '';
 
-              // Wrap in .dw-attack-roll div with animation metadata
-              const content = `<div class="dw-attack-roll"
-  data-attack-type="psychic"
-  data-actor-id="${actor.id}"
-  data-item-id="${power.id}"
-  data-item-uuid="${power.uuid}"
-  data-animation-key="${Sanitizer.escape(power.system.key || '')}"
-  data-source-token-id="${sourceTokenId}"
-  data-target-token-id="${targetTokenId}"
-  data-power-level="${powerLevel}">
-  <div class="attack-flavor">${flavor}</div>
-  ${rollHtml}
-</div>`;
-
-              // Create chat message with structured content
-              await FoundryAdapter.createChatMessage({
-                speaker,
-                content,
-                rolls: [hitRoll],
-                rollMode: game.settings.get('core', 'rollMode')
+              // Create attack chat message (psychic powers don't need damage-type/weapon-class)
+              await CombatHelper.createAttackChatMessage(actor, power, hitRoll, flavor, 'psychic', {
+                attackerToken: sourceToken,
+                targetToken,
+                powerLevel
               });
             } else {
               // Failed manifestation - no wrapper, no animation
@@ -673,29 +657,12 @@ export class PsychicCombatHelper {
         }
       }
 
-      const content = `
-        <div class="flamer-damage-roll"
-             data-flamer-damage="${damage}"
-             data-flamer-pen="${penetration}"
-             data-flamer-type="${Sanitizer.escape(damageType)}"
-             data-flamer-range="${range}"
-             data-actor-id="${actor.id}"
-             data-weapon-name="${safePowerName}"
-             data-timestamp="${timestamp}">
-          <h3>🔥 Psychic Flame: ${safePowerName}</h3>
-          <p><strong>Damage:</strong> ${damage}</p>
-          <p><strong>Penetration:</strong> ${penetration}</p>
-          <p><strong>Damage Type:</strong> ${Sanitizer.escape(damageType)}</p>
-          <p><strong>Range:</strong> ${range}m</p>
-          <em>Run Flame Attack macro for each target in cone.</em>
-        </div>
-      `;
-
-      await ChatMessage.create({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        rolls: [damageRoll],
-        rollMode: game.settings.get('core', 'rollMode')
+      await CombatHelper.createFlamerDamageMessage(actor, power.name, damageRoll, {
+        damage,
+        penetration,
+        damageType,
+        range,
+        title: 'Psychic Flame'
       });
 
       return; // Exit early for flame powers

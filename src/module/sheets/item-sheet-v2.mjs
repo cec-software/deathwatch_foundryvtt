@@ -1,5 +1,9 @@
 import { ModifierHelper } from "../helpers/character/modifiers.mjs";
 import { MODIFIER_TYPES } from '../helpers/constants/modifier-constants.mjs';
+import { ScrollPositionManager } from "./shared/utils/scroll-position-manager.mjs";
+import { TabManager } from "./shared/utils/tab-manager.mjs";
+import { EnrichmentHelper } from "./shared/utils/enrichment-helper.mjs";
+import { TemplateCompiler } from "./shared/utils/template-compiler.mjs";
 
 const { HandlebarsApplicationMixin, DialogV2 } = foundry.applications.api;
 
@@ -49,26 +53,11 @@ export class DeathwatchItemSheetV2 extends HandlebarsApplicationMixin(
   /** @override — render using per-instance template to avoid static PARTS sharing */
   async _renderHTML(context, options) {
     // Save scroll position before re-render
-    const el = this.element;
-    if (el) {
-      // Try multiple selectors to find the actual scrollable container
-      // In ApplicationV2, the scrollable container is usually .window-content or the parent of .sheet-body
-      const scrollable = el.querySelector(".window-content") ||
-                         el.querySelector(".sheet-body")?.parentElement ||
-                         el.querySelector(".sheet-body");
-      if (scrollable && scrollable.scrollTop !== undefined) {
-        this._sheetScrollTop = scrollable.scrollTop;
-      }
+    if (this.element) {
+      this._scrollPositions = ScrollPositionManager.save(this.element);
     }
 
-    const template = this._itemTemplate;
-    const compiled = await foundry.applications.handlebars.getTemplate(template);
-    const htmlString = compiled(context, { allowProtoMethodsByDefault: true, allowProtoPropertiesByDefault: true });
-    const temp = document.createElement("div");
-    temp.innerHTML = htmlString;
-    const content = temp.firstElementChild;
-    content.dataset.applicationPart = "sheet";
-    return { sheet: content };
+    return await TemplateCompiler.compile(this._itemTemplate, context);
   }
 
   _onFirstRender(context, options) {
@@ -109,19 +98,9 @@ export class DeathwatchItemSheetV2 extends HandlebarsApplicationMixin(
     context.source = this.item._source.system;
 
     // Enrich HTML for non-editable views (compendium items)
-    if (!this.isEditable) {
-      const enrichmentOptions = {
-        secrets: this.item.isOwner,
-        relativeTo: this.item,
-        rollData: context.rollData
-      };
-      context.enriched = {
-        description: await foundry.applications.ux.TextEditor.enrichHTML(
-          this.item.system.description || '',
-          enrichmentOptions
-        )
-      };
-    }
+    // Enrich HTML for non-editable views
+    context.editable = this.isEditable;
+    await EnrichmentHelper.enrichForContext(context, this.item, ['description']);
 
     if (itemData.type === 'specialty') {
       this._prepareSpecialtyData(context);
@@ -347,29 +326,15 @@ export class DeathwatchItemSheetV2 extends HandlebarsApplicationMixin(
     if (!html) return;
 
     // V1-style tab activation
-    const tabNav = html.querySelector('.sheet-tabs');
-    if (tabNav) {
-      const tabs = new foundry.applications.ux.Tabs({
-        navSelector: '.sheet-tabs', contentSelector: '.sheet-body',
-        initial: this._activeTab || 'description'
-      });
-      tabs.bind(html);
-      tabs.activate(this._activeTab || 'description');
-      html.querySelectorAll('.sheet-tabs .item').forEach(tab => {
-        tab.addEventListener('click', () => { this._activeTab = tab.dataset.tab; });
+    if (html.querySelector('.sheet-tabs')) {
+      TabManager.initialize(html, this, {
+        defaultTab: 'description',
+        storageKey: '_activeTab'
       });
     }
 
     // Restore scroll position
-    if (this._sheetScrollTop !== undefined) {
-      // Try multiple selectors to find the actual scrollable container
-      const scrollable = html.querySelector(".window-content") ||
-                         html.querySelector(".sheet-body")?.parentElement ||
-                         html.querySelector(".sheet-body");
-      if (scrollable && scrollable.scrollTop !== undefined) {
-        scrollable.scrollTop = this._sheetScrollTop;
-      }
-    }
+    ScrollPositionManager.restore(html, this._scrollPositions);
 
     // Quality value change
     html.querySelectorAll('.quality-value').forEach(input => {

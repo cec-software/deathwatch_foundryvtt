@@ -37,6 +37,224 @@ export class CombatHelper {
   static lastCalledShotLocation = null;
 
   /**
+   * Get attack tokens for combat resolution.
+   * Returns attacker token, target token, and target actor.
+   *
+   * @param {Actor} actor - Attacking actor
+   * @returns {{attackerToken: Token|null, targetToken: Token|null, targetActor: Actor|null}}
+   *
+   * @example
+   * const { attackerToken, targetToken, targetActor } = CombatHelper.getAttackTokens(actor);
+   * if (!targetToken) {
+   *   ui.notifications.warn("No target selected");
+   *   return;
+   * }
+   */
+  static getAttackTokens(actor) {
+    const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
+    const targetToken = game.user.targets.first();
+    const targetActor = targetToken?.actor;
+
+    return { attackerToken, targetToken, targetActor };
+  }
+
+  /**
+   * Create and post attack roll chat message with animation data attributes.
+   * Used for ranged, melee, and psychic attacks.
+   *
+   * @param {Actor} actor - Attacking actor
+   * @param {Item} weapon - Weapon or power item
+   * @param {Roll} roll - Attack roll
+   * @param {string} flavor - Flavor text for the attack
+   * @param {string} attackType - Attack type: 'ranged', 'melee', 'grenade', or 'psychic'
+   * @param {Object} [options={}] - Additional data attributes
+   * @param {Token} [options.attackerToken] - Source token for animations
+   * @param {Token} [options.targetToken] - Target token for animations
+   * @param {number} [options.roundsFired] - Rounds fired (ranged only)
+   * @param {string} [options.fireMode] - Fire mode: 'single', 'semi', 'full' (ranged only)
+   * @param {string} [options.powerLevel] - Power level: 'fettered', 'unfettered', 'push' (psychic only)
+   * @returns {Promise<ChatMessage>} Created chat message
+   *
+   * @example
+   * await CombatHelper.createAttackChatMessage(actor, bolter, roll, flavorText, 'ranged', {
+   *   attackerToken, targetToken, roundsFired: 3, fireMode: 'semi'
+   * });
+   */
+  static async createAttackChatMessage(actor, weapon, roll, flavor, attackType, options = {}) {
+    const {
+      attackerToken,
+      targetToken,
+      roundsFired,
+      fireMode,
+      powerLevel
+    } = options;
+
+    const rollHtml = await roll.render();
+    const sourceTokenId = attackerToken?.id || '';
+    const targetTokenId = targetToken?.id || '';
+
+    // Determine animation key based on item type
+    let animationKey = '';
+    if (attackType === 'psychic') {
+      // Psychic powers use 'key' field
+      animationKey = weapon.system.key || '';
+    } else {
+      // Weapons use 'animationKey' field
+      animationKey = weapon.system.animationKey || '';
+    }
+
+    // Build data attributes (common to all attack types)
+    const dataAttributes = {
+      'data-actor-id': actor.id,
+      'data-item-id': weapon.id,
+      'data-item-uuid': weapon.uuid,
+      'data-attack-type': attackType,
+      'data-animation-key': Sanitizer.escape(animationKey),
+      'data-damage-type': Sanitizer.escape(weapon.system.dmgType || ''),
+      'data-weapon-class': Sanitizer.escape(weapon.system.class || ''),
+      'data-source-token-id': sourceTokenId,
+      'data-target-token-id': targetTokenId
+    };
+
+    // Add ranged-specific attributes
+    if (roundsFired !== undefined) {
+      dataAttributes['data-rounds-fired'] = roundsFired;
+    }
+    if (fireMode) {
+      dataAttributes['data-fire-mode'] = fireMode;
+    }
+
+    // Add psychic-specific attributes
+    if (powerLevel) {
+      dataAttributes['data-power-level'] = powerLevel;
+    }
+
+    // Convert data attributes object to HTML string
+    const dataAttrsString = Object.entries(dataAttributes)
+      .map(([key, value]) => `${key}="${value}"`)
+      .join('\n  ');
+
+    const content = `<div class="dw-attack-roll"
+  ${dataAttrsString}>
+  <div class="attack-flavor">${flavor}</div>
+  ${rollHtml}
+</div>`;
+
+    const speaker = ChatMessage.getSpeaker({ actor });
+    return await FoundryAdapter.createChatMessage({
+      speaker,
+      content,
+      rolls: [roll],
+      rollMode: game.settings.get('core', 'rollMode')
+    });
+  }
+
+  /**
+   * Create and post flame damage chat message with animation data.
+   * Used for flame weapons and psychic flame powers.
+   *
+   * @param {Actor} actor - Actor using flame weapon/power
+   * @param {string} weaponName - Weapon or power name
+   * @param {Roll} damageRoll - Damage roll object
+   * @param {Object} flameData - Flame attack data
+   * @param {number} flameData.damage - Total damage
+   * @param {number} flameData.penetration - Armor penetration
+   * @param {string} flameData.damageType - Damage type (usually 'Energy')
+   * @param {number|string} flameData.range - Range in meters
+   * @param {string} [flameData.title='Flamer'] - Title prefix ('Flamer' or 'Psychic Flame')
+   * @returns {Promise<ChatMessage>} Created chat message
+   *
+   * @example
+   * await CombatHelper.createFlamerDamageMessage(actor, 'Heavy Flamer', roll, {
+   *   damage: 15, penetration: 6, damageType: 'Energy', range: 20
+   * });
+   */
+  static async createFlamerDamageMessage(actor, weaponName, damageRoll, flameData) {
+    const { damage, penetration, damageType, range, title = 'Flamer' } = flameData;
+    const safeWeaponName = Sanitizer.escape(weaponName);
+    const timestamp = Date.now();
+
+    const content = `
+      <div class="flamer-damage-roll"
+           data-flamer-damage="${damage}"
+           data-flamer-pen="${penetration}"
+           data-flamer-type="${Sanitizer.escape(damageType)}"
+           data-flamer-range="${range}"
+           data-actor-id="${actor.id}"
+           data-weapon-name="${safeWeaponName}"
+           data-timestamp="${timestamp}">
+        <h3>🔥 ${title}: ${safeWeaponName}</h3>
+        <p><strong>Damage:</strong> ${damage}</p>
+        <p><strong>Penetration:</strong> ${penetration}</p>
+        <p><strong>Damage Type:</strong> ${Sanitizer.escape(damageType)}</p>
+        <p><strong>Range:</strong> ${range}m</p>
+        <em>Run Flame Attack macro for each target in cone.</em>
+      </div>
+    `;
+
+    return await ChatMessage.create({
+      speaker: ChatMessage.getSpeaker({ actor }),
+      content,
+      rolls: [damageRoll],
+      rollMode: game.settings.get('core', 'rollMode')
+    });
+  }
+
+  /**
+   * Deduct ammunition from a weapon after firing.
+   * Handles horde check, ammo management validation, capacity update, and out-of-ammo notification.
+   *
+   * @param {Actor} actor - Actor firing the weapon
+   * @param {Item} weapon - Weapon item
+   * @param {number} [ammoExpended=1] - Number of rounds expended
+   * @param {boolean} [hasAmmoManagement=true] - Whether weapon uses ammo management
+   * @returns {Promise<{success: boolean, remainingAmmo: number}>} Result of ammo deduction
+   *
+   * @example
+   * const result = await CombatHelper.deductAmmo(actor, weapon, 3);
+   * if (result.remainingAmmo === 0) {
+   *   console.log('Out of ammo!');
+   * }
+   */
+  static async deductAmmo(actor, weapon, ammoExpended = 1, hasAmmoManagement = true) {
+    const isHorde = actor.type === 'horde';
+
+    // Hordes don't track ammo
+    if (isHorde) {
+      return { success: false, remainingAmmo: -1 };
+    }
+
+    // Check if weapon has ammo management enabled
+    if (!hasAmmoManagement || !weapon.system.loadedAmmo) {
+      return { success: false, remainingAmmo: -1 };
+    }
+
+    // Get loaded ammo item
+    const loadedAmmo = actor.items.get(weapon.system.loadedAmmo);
+    if (!loadedAmmo) {
+      return { success: false, remainingAmmo: -1 };
+    }
+
+    // Calculate new ammo value
+    const currentAmmo = loadedAmmo.system.capacity.value;
+    const newAmmoValue = Math.max(0, currentAmmo - ammoExpended);
+
+    // Update ammo capacity
+    await loadedAmmo.update({ "system.capacity.value": newAmmoValue });
+
+    // Show out-of-ammo warning
+    if (newAmmoValue === 0) {
+      const safeWeaponName = Sanitizer.escape(weapon.name);
+      ui.notifications.warn(`${safeWeaponName} is out of ammunition!`);
+    }
+
+    // Refresh sheet to show updated ammo
+    actor.sheet.render(false);
+
+    return { success: true, remainingAmmo: newAmmoValue };
+  }
+
+  /**
    * Calculate range modifier and band label for a ranged attack.
    * Based on Deathwatch Core Rulebook p. 245.
    * @param {number} distance - Distance to target in meters
@@ -173,19 +391,7 @@ export class CombatHelper {
     // Deduct ammunition (flamers consume 1 round per shot)
     const clip = weapon.system.clip;
     const hasAmmoManagement = clip && clip !== '—' && clip !== '-' && clip !== '';
-    const isHorde = actor.type === 'horde';
-
-    if (!isHorde && hasAmmoManagement && weapon.system.loadedAmmo) {
-      const loadedAmmo = actor.items.get(weapon.system.loadedAmmo);
-      if (loadedAmmo) {
-        const newAmmoValue = Math.max(0, loadedAmmo.system.capacity.value - 1);
-        await loadedAmmo.update({ 'system.capacity.value': newAmmoValue });
-        if (newAmmoValue === 0) {
-          FoundryAdapter.showNotification('warn', `${safeWeaponName} is out of ammunition!`);
-        }
-        actor.sheet.render(false);
-      }
-    }
+    await this.deductAmmo(actor, weapon, 1, hasAmmoManagement);
   }
 
   /**
@@ -624,29 +830,12 @@ export class CombatHelper {
       }
 
       // Create chat message with machine-readable metadata
-      const content = `
-        <div class="flamer-damage-roll"
-             data-flamer-damage="${damage}"
-             data-flamer-pen="${penetration}"
-             data-flamer-type="${Sanitizer.escape(damageType)}"
-             data-flamer-range="${range}"
-             data-actor-id="${actor.id}"
-             data-weapon-name="${safeWeaponName}"
-             data-timestamp="${timestamp}">
-          <h3>🔥 Flamer: ${safeWeaponName}</h3>
-          <p><strong>Damage:</strong> ${damage}</p>
-          <p><strong>Penetration:</strong> ${penetration}</p>
-          <p><strong>Damage Type:</strong> ${Sanitizer.escape(damageType)}</p>
-          <p><strong>Range:</strong> ${range}m</p>
-          <em>Run Flame Attack macro for each target in cone.</em>
-        </div>
-      `;
-
-      await ChatMessage.create({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        rolls: [damageRoll], // Preserve roll object for dice-so-nice
-        rollMode: game.settings.get('core', 'rollMode')
+      await this.createFlamerDamageMessage(actor, weapon.name, damageRoll, {
+        damage,
+        penetration,
+        damageType,
+        range,
+        title: 'Flamer'
       });
 
 

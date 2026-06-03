@@ -180,6 +180,18 @@ game.socket.on("system.deathwatch", async (data) => {
 
 See `src/module/init/socket.mjs` for registered handlers.
 
+### Animation System
+
+**Chat Message Data Attributes** - Combat helpers create chat messages with `data-attack-type` attribute:
+- `"ranged"` - Guns (bolters, las, plasma) → AnimationHook plays weapon animation
+- `"grenade"` - Thrown/grenades → GrenadeHelper plays grenade animation
+- `"melee"` - Melee weapons → Automated Animations handles
+- `"psychic"` - Psychic powers → Automated Animations handles
+
+**AnimationHook** (`src/module/hooks/animation-hook.mjs`) only processes explicit `attackType === 'ranged'`. No default fallbacks.
+
+**Critical:** All ranged attack dialogs MUST set `data-attack-type` explicitly to prevent dual-firing animations.
+
 ### Foundry v13-v14 TypeDataModel Pattern
 
 - **DataModel classes** (`src/module/data/`) define schemas and derived data
@@ -201,6 +213,7 @@ See `src/module/init/socket.mjs` for registered handlers.
 
 - **FoundryAdapter** — All Foundry API calls routed through adapter for testability ([foundry-adapter.md](.claude/docs/foundry-adapter.md))
 - **Item Keys** — Never match by ID/name, use `key` field ([item-patterns.md](.claude/docs/item-patterns.md))
+- **CHARACTERISTICS Constant** — Source of truth for characteristic keys (ws, bs, str, tg, ag, int, per, wil, fs). Never hardcode. Import from `src/module/helpers/constants/characteristic-constants.mjs`
 - **Constants** — No magic numbers, use constants from `src/module/helpers/constants/` ([constants.md](.claude/docs/constants.md))
 - **Error Handling** — Wrap event listeners with `ErrorHandler.wrap()` ([coding-standards.md](.claude/docs/coding-standards.md))
 - **Logging** — Use `Logger.category('X.Y').debug()` for subsystem logs or `Logger.debug()` for one-off messages. Never use `console.*` ([coding-standards.md](.claude/docs/coding-standards.md))
@@ -216,7 +229,9 @@ See `src/module/init/socket.mjs` for registered handlers.
 3. Verify all tests pass
 4. Refactor if needed
 
-**Expected results:** 139 test suites, 2354 passing tests (as of 2026-05-20)
+**For debugging:** Use `superpowers:systematic-debugging` skill (Phase 1-4: root cause → pattern analysis → hypothesis → implementation). Never guess or apply random fixes.
+
+**Expected results:** 139 test suites, 2417 passing tests (as of 2026-06-02)
 
 **See [.claude/docs/testing.md](.claude/docs/testing.md) and [.claude/memory/testing_standards.md](.claude/memory/testing_standards.md) for complete testing documentation.**
 

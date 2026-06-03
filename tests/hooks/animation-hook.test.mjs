@@ -142,6 +142,15 @@ describe('AnimationHook', () => {
     });
 
     it('extracts metadata and plays animation', async () => {
+      mockMessage.content = `<div class="dw-attack-roll"
+        data-actor-id="actor123"
+        data-item-id="item456"
+        data-attack-type="ranged"
+        data-rounds-fired="3"
+        data-source-token-id="source1"
+        data-target-token-id="target1">
+      </div>`;
+
       global.game.modules.get = jest.fn((id) => {
         if (id === 'sequencer') return { active: true };
         if (id === 'jb2a_patreon') return { active: true };
@@ -159,7 +168,11 @@ describe('AnimationHook', () => {
       };
 
       global.game.actors.get = jest.fn(() => mockActor);
-      global.game.user.targets.first = jest.fn(() => mockTargetToken);
+      global.canvas.tokens.get = jest.fn((id) => {
+        if (id === 'source1') return mockSourceToken;
+        if (id === 'target1') return mockTargetToken;
+        return null;
+      });
 
       const mockSequence = {
         effect: jest.fn().mockReturnValue({
@@ -184,8 +197,11 @@ describe('AnimationHook', () => {
       mockMessage.content = `<div class="dw-attack-roll"
         data-actor-id="actor123"
         data-item-id="item456"
+        data-attack-type="ranged"
         data-animation-key="plasma"
-        data-damage-type="Explosive">
+        data-damage-type="Explosive"
+        data-source-token-id="source1"
+        data-target-token-id="target1">
       </div>`;
 
       global.game.modules.get = jest.fn((id) => {
@@ -205,7 +221,11 @@ describe('AnimationHook', () => {
       };
 
       global.game.actors.get = jest.fn(() => mockActor);
-      global.game.user.targets.first = jest.fn(() => mockTargetToken);
+      global.canvas.tokens.get = jest.fn((id) => {
+        if (id === 'source1') return mockSourceToken;
+        if (id === 'target1') return mockTargetToken;
+        return null;
+      });
 
       const mockEffect = {
         file: jest.fn().mockReturnThis(),
@@ -232,6 +252,7 @@ describe('AnimationHook', () => {
       mockMessage.content = `<div class="dw-attack-roll"
         data-actor-id="actor123"
         data-item-id="item456"
+        data-attack-type="ranged"
         data-source-token-id="source-token-999"
         data-target-token-id="target-token-888"
         data-rounds-fired="1">
@@ -292,6 +313,7 @@ describe('AnimationHook', () => {
       mockMessage.content = `<div class="dw-attack-roll"
         data-actor-id="actor123"
         data-item-id="item456"
+        data-attack-type="ranged"
         data-source-token-id="pc-token-123"
         data-target-token-id="enemy-token-456"
         data-rounds-fired="1">
@@ -354,6 +376,7 @@ describe('AnimationHook', () => {
       mockMessage.content = `<div class="dw-attack-roll"
         data-actor-id="actor123"
         data-item-id="item456"
+        data-attack-type="ranged"
         data-rounds-fired="1">
       </div>`;
 
@@ -419,6 +442,48 @@ describe('AnimationHook', () => {
       await AnimationHook.onCreateChatMessage(mockMessage);
 
       // Assert - should exit early, not call canvas.tokens.get
+      expect(global.canvas.tokens.get).not.toHaveBeenCalled();
+      expect(global.Sequence).not.toHaveBeenCalled();
+    });
+
+    it('exits early for grenade attacks (GrenadeHelper handles animation)', async () => {
+      // Arrange
+      mockMessage.content = `<div class="dw-attack-roll"
+        data-attack-type="grenade"
+        data-actor-id="actor123"
+        data-item-id="item456"
+        data-weapon-class="Thrown"
+        data-source-token-id="token1"
+        data-target-token-id="token2">
+        <div>Grenade attack result</div>
+      </div>`;
+
+      global.game.modules.get = jest.fn(() => ({ active: true }));
+
+      // Act
+      await AnimationHook.onCreateChatMessage(mockMessage);
+
+      // Assert - should exit early, not call canvas.tokens.get or play animation
+      expect(global.canvas.tokens.get).not.toHaveBeenCalled();
+      expect(global.Sequence).not.toHaveBeenCalled();
+    });
+
+    it('exits early when attackType is missing (explicit handling required)', async () => {
+      // Arrange - message without data-attack-type attribute
+      mockMessage.content = `<div class="dw-attack-roll"
+        data-actor-id="actor123"
+        data-item-id="item456"
+        data-source-token-id="token1"
+        data-target-token-id="token2">
+        <div>Attack result</div>
+      </div>`;
+
+      global.game.modules.get = jest.fn(() => ({ active: true }));
+
+      // Act
+      await AnimationHook.onCreateChatMessage(mockMessage);
+
+      // Assert - should exit early without attackType, no default fallback
       expect(global.canvas.tokens.get).not.toHaveBeenCalled();
       expect(global.Sequence).not.toHaveBeenCalled();
     });

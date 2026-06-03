@@ -247,6 +247,76 @@ describe('AnimationHelper', () => {
     });
   });
 
+  describe('playGrenadeAnimation', () => {
+    let mockSequence;
+
+    beforeEach(() => {
+      mockSequence = {
+        effect: jest.fn().mockReturnThis(),
+        file: jest.fn().mockReturnThis(),
+        atLocation: jest.fn().mockReturnThis(),
+        stretchTo: jest.fn().mockReturnThis(),
+        waitUntilFinished: jest.fn().mockReturnThis(),
+        scaleToObject: jest.fn().mockReturnThis(),
+        belowTokens: jest.fn().mockReturnThis(),
+        scaleIn: jest.fn().mockReturnThis(),
+        duration: jest.fn().mockReturnThis(),
+        fadeOut: jest.fn().mockReturnThis(),
+        play: jest.fn().mockResolvedValue(undefined)
+      };
+      global.Sequence = jest.fn(() => mockSequence);
+    });
+
+    afterEach(() => {
+      delete global.Sequence;
+    });
+
+    it('should create a 4-stage animation sequence', async () => {
+      const sourceToken = { id: 'token1' };
+      const targetLocation = { x: 300, y: 400 };
+      const weapon = { name: 'Frag Grenade' };
+
+      await AnimationHelper.playGrenadeAnimation(sourceToken, targetLocation, weapon);
+
+      expect(mockSequence.effect).toHaveBeenCalledTimes(4);
+      expect(mockSequence.play).toHaveBeenCalled();
+    });
+
+    it('should use correct JB2A file paths', async () => {
+      const sourceToken = { id: 'token1' };
+      const targetLocation = { x: 300, y: 400 };
+      const weapon = { name: 'Frag Grenade' };
+
+      await AnimationHelper.playGrenadeAnimation(sourceToken, targetLocation, weapon);
+
+      expect(mockSequence.file).toHaveBeenCalledWith('jb2a.throwable.throw.bomb.01.black');
+      expect(mockSequence.file).toHaveBeenCalledWith('jb2a.explosion.shrapnel.bomb.01.black');
+      expect(mockSequence.file).toHaveBeenCalledWith('jb2a.explosion.08.orange');
+      expect(mockSequence.file).toHaveBeenCalledWith('jb2a.impact.ground_crack.orange');
+    });
+
+    it('should target location objects not tokens', async () => {
+      const sourceToken = { id: 'token1' };
+      const targetLocation = { x: 500, y: 600 };
+      const weapon = { name: 'Frag Grenade' };
+
+      await AnimationHelper.playGrenadeAnimation(sourceToken, targetLocation, weapon);
+
+      expect(mockSequence.atLocation).toHaveBeenCalledWith(sourceToken);
+      expect(mockSequence.stretchTo).toHaveBeenCalledWith(targetLocation);
+    });
+
+    it('should await the sequence play call', async () => {
+      const sourceToken = { id: 'token1' };
+      const targetLocation = { x: 100, y: 200 };
+      const weapon = { name: 'Frag Grenade' };
+
+      await AnimationHelper.playGrenadeAnimation(sourceToken, targetLocation, weapon);
+
+      expect(mockSequence.play).toHaveBeenCalled();
+    });
+  });
+
   describe('getAnimationConfig', () => {
     it('returns bolt configuration', () => {
       const result = AnimationHelper.getAnimationConfig('bolt');

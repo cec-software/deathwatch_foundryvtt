@@ -42,12 +42,15 @@ export class AnimationHook {
     const itemId = attackDiv.dataset.itemId;
     const roundsFired = parseInt(attackDiv.dataset.roundsFired) || 1;
     const animationKey = attackDiv.dataset.animationKey || '';
-    const attackType = attackDiv.dataset.attackType || 'ranged'; // 'ranged', 'melee', or 'psychic'
+    const attackType = attackDiv.dataset.attackType || ''; // 'ranged', 'melee', 'psychic', or 'grenade'
     const sourceTokenId = attackDiv.dataset.sourceTokenId || '';
     const targetTokenId = attackDiv.dataset.targetTokenId || '';
 
-    // Only handle ranged attacks - melee and psychic use Automated Animations directly
-    if (attackType === 'melee' || attackType === 'psychic') {
+    // Only handle explicit 'ranged' attacks
+    // - melee/psychic use Automated Animations directly
+    // - grenades use GrenadeHelper animation
+    // - missing attackType: no default, exit early (requires explicit type)
+    if (attackType !== 'ranged') {
       return;
     }
 
