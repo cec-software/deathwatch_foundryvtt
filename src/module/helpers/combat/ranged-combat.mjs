@@ -508,8 +508,7 @@ export class RangedCombatHelper {
     const bs = actor.system.characteristics.bs.value || 0;
     const agBonus = actor.system.characteristics?.ag?.mod || 0;
 
-    const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-    const targetToken = options.targetLocation ? null : game.user.targets.first();
+    const { attackerToken, targetToken } = CombatHelper.getAttackTokens(actor);
 
     if (!options.targetLocation && !targetToken) {
       ui.notifications.warn("No target selected. Please target a token before attacking.");
@@ -887,19 +886,7 @@ export class RangedCombatHelper {
             }
 
             // Deduct ammo
-            const isHorde = actor.type === 'horde';
-            if (!isHorde && hasAmmoManagement && weapon.system.loadedAmmo) {
-              const loadedAmmo = actor.items.get(weapon.system.loadedAmmo);
-              if (loadedAmmo) {
-                const newAmmoValue = Math.max(0, loadedAmmo.system.capacity.value - ammoExpended);
-                await loadedAmmo.update({ "system.capacity.value": newAmmoValue });
-                if (newAmmoValue === 0) {
-                  const safeWeaponName = Sanitizer.escape(weapon.name);
-                  ui.notifications.warn(`${safeWeaponName} is out of ammunition!`);
-                }
-                actor.sheet.render(false);
-              }
-            }
+            await CombatHelper.deductAmmo(actor, weapon, ammoExpended, hasAmmoManagement);
           }
         },
         { label: "Cancel", action: "cancel" }
@@ -940,8 +927,7 @@ export class RangedCombatHelper {
     const clip = weapon.system.clip;
     const hasAmmoManagement = clip && clip !== '\u2014' && clip !== '-' && clip !== '';
 
-    const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-    const targetToken = game.user.targets.first();
+    const { attackerToken, targetToken } = CombatHelper.getAttackTokens(actor);
 
     let autoRangeMod = 0;
     let rangeLabel = "Unknown";

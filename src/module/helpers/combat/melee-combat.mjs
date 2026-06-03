@@ -367,9 +367,7 @@ export class MeleeCombatHelper {
             const hitRoll = await new Roll('1d100').evaluate();
             const hitValue = hitRoll.total;
 
-            const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-            const targetToken = game.user.targets.first();
-            const targetActor = targetToken?.actor;
+            const { attackerToken, targetToken, targetActor } = CombatHelper.getAttackTokens(actor);
             const { modifier: sizeModifier, label: sizeLabel } = CombatDialogHelper.getTargetSizeModifier(targetActor);
 
             const result = await MeleeCombatHelper.resolveMeleeAttack(actor, weapon, {
@@ -438,9 +436,7 @@ export class MeleeCombatHelper {
     const hitRoll = await new Roll('1d100').evaluate();
     const hitValue = hitRoll.total;
 
-    const attackerToken = actor.getActiveTokens()[0] || canvas.tokens.controlled[0];
-    const targetToken = game.user.targets.first();
-    const targetActor = targetToken?.actor;
+    const { attackerToken, targetToken, targetActor } = CombatHelper.getAttackTokens(actor);
     const { modifier: sizeModifier, label: sizeLabel } = CombatDialogHelper.getTargetSizeModifier(targetActor);
 
     const result = await MeleeCombatHelper.resolveMeleeAttack(actor, weapon, {

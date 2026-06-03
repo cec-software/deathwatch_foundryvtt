@@ -5,6 +5,7 @@ import { FoundryAdapter } from "../foundry-adapter.mjs";
 import { ChatMessageBuilder } from "../ui/chat-message-builder.mjs";
 import { RighteousFuryHelper } from "./righteous-fury-helper.mjs";
 import { Sanitizer } from "../sanitizer.mjs";
+import { CombatHelper } from "./combat.mjs";
 
 /**
  * Psychic combat helper for Focus Power Tests, Psy Rating, and Phenomena/Perils.
@@ -673,29 +674,12 @@ export class PsychicCombatHelper {
         }
       }
 
-      const content = `
-        <div class="flamer-damage-roll"
-             data-flamer-damage="${damage}"
-             data-flamer-pen="${penetration}"
-             data-flamer-type="${Sanitizer.escape(damageType)}"
-             data-flamer-range="${range}"
-             data-actor-id="${actor.id}"
-             data-weapon-name="${safePowerName}"
-             data-timestamp="${timestamp}">
-          <h3>🔥 Psychic Flame: ${safePowerName}</h3>
-          <p><strong>Damage:</strong> ${damage}</p>
-          <p><strong>Penetration:</strong> ${penetration}</p>
-          <p><strong>Damage Type:</strong> ${Sanitizer.escape(damageType)}</p>
-          <p><strong>Range:</strong> ${range}m</p>
-          <em>Run Flame Attack macro for each target in cone.</em>
-        </div>
-      `;
-
-      await ChatMessage.create({
-        speaker: ChatMessage.getSpeaker({ actor }),
-        content,
-        rolls: [damageRoll],
-        rollMode: game.settings.get('core', 'rollMode')
+      await CombatHelper.createFlamerDamageMessage(actor, power.name, damageRoll, {
+        damage,
+        penetration,
+        damageType,
+        range,
+        title: 'Psychic Flame'
       });
 
       return; // Exit early for flame powers
